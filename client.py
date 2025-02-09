@@ -18,7 +18,7 @@ NUM_CLIENTS = 3
 """
 
 # 1) Loading and viewing the dataset
-data = pd.read_csv('./Bitext_Sample_Customer_Support_Training_Dataset_27K_responses-v11.csv')
+data = pd.read_csv('./Dataset/Bitext_Sample_Customer_Support_Training_Dataset_27K_responses-v11.csv')
 
 # 2) Cleaning the dataset
 data['instruction'] = data['instruction'].str.replace(r"[^\w\s]", "", regex=True)
