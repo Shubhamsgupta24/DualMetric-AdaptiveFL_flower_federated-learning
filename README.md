@@ -9,5 +9,5 @@ git clone https://github.com/Shubhamsgupta24/FlowerTensorflow.git
 ### 2. Create the Conda environment
 conda env create -f environment.yml
 
-## 3. Activate the environment
+### 3. Activate the environment
 conda activate myenv
