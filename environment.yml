@@ -1,4 +1,4 @@
-name: /Users/shubhamgupta/Desktop/BTechProject/Flower/.conda
+name: flower_env
 channels:
   - defaults
   - https://repo.anaconda.com/pkgs/main
@@ -10,6 +10,7 @@ dependencies:
   - ncurses=6.4=h313beb8_0
   - openssl=3.0.15=h80987f9_0
   - python=3.11.11=hb885b13_0
+  - pip
   - readline=8.2=h1a28f6b_0
   - sqlite=3.45.3=h80987f9_0
   - tk=8.6.14=h6ba3021_0
@@ -62,7 +63,6 @@ dependencies:
       - msgpack==1.1.0
       - multidict==6.1.0
       - multiprocess==0.70.16
-      - my-awesome-app==1.0.0
       - namex==0.0.8
       - networkx==3.4.2
       - numpy==1.26.4
@@ -100,7 +100,6 @@ dependencies:
       - tensorboard-data-server==0.7.2
       - tensorflow==2.18.0
       - tensorflow-io-gcs-filesystem==0.37.1
-      - tensorflow-test-app==1.0.0
       - termcolor==2.5.0
       - threadpoolctl==3.5.0
       - tomli==2.2.1
@@ -117,4 +116,3 @@ dependencies:
       - wrapt==1.17.2
       - xxhash==3.5.0
       - yarl==1.18.3
-prefix: /Users/shubhamgupta/Desktop/BTechProject/Flower/.conda

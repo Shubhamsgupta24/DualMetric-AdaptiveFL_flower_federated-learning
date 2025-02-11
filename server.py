@@ -8,7 +8,7 @@ from flwr.server.client_proxy import ClientProxy
 from flwr.server.strategy.aggregate import aggregate
 
 # Global variable
-NUM_CLIENTS = 3
+NUM_CLIENTS = 10
 
 # Create CentralModel folder if it doesn't exist
 os.makedirs('CentralModel', exist_ok=True)

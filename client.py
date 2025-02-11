@@ -9,7 +9,7 @@ from tensorflow.keras.preprocessing.sequence import pad_sequences # type: ignore
 import os, sys
 
 # Global variable for number of clients
-NUM_CLIENTS = 3
+NUM_CLIENTS = 10 
 
 """
 ============================================================================
