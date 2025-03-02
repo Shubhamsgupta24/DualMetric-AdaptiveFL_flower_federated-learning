@@ -4,8 +4,13 @@ from flwr.common import Scalar, NDArrays, Parameters, FitRes, EvaluateRes, ndarr
 from flwr.server.client_proxy import ClientProxy
 from flwr.server.strategy.aggregate import aggregate
 
+'''
+CAUTION:
+1) NUM_CLIENTS will be according to the number of datasets present in the Train folder which are created using different cases in data_prep_and_viz.py.
+'''
+
 # Global variables
-NUM_CLIENTS = 11
+NUM_CLIENTS = 6
 NUM_ROUNDS = 2
 
 class CustomStrategy(fl.server.strategy.FedAvg):
