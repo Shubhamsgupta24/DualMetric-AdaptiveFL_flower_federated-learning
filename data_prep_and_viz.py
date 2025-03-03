@@ -2,7 +2,6 @@ import pandas as pd
 import numpy as np
 from sklearn.model_selection import train_test_split
 import os
-import shutil
 import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.preprocessing import LabelEncoder
@@ -12,23 +11,6 @@ TRAIN_DIR = './Dataset/Train'
 TEST_DIR = './Dataset/Test'
 VISUAL_DIR = './Dataset/Visualizations'
 TEST_SIZE = 0.1 # Percentage of data for testing from the main dataset
-
-# Cleaning the directory before saving 
-if os.path.exists(TRAIN_DIR):
-        os.chmod(TRAIN_DIR, 0o777)
-        shutil.rmtree(TRAIN_DIR)  # Remove all files
-        os.makedirs(TRAIN_DIR)  # Recreate the directory
-
-if os.path.exists(TEST_DIR):
-        os.chmod(TEST_DIR, 0o777)
-        shutil.rmtree(TEST_DIR)  # Remove all files
-        os.makedirs(TEST_DIR)  # Recreate the directory
-
-if os.path.exists(VISUAL_DIR):
-        os.chmod(VISUAL_DIR, 0o777)
-        shutil.rmtree(VISUAL_DIR)  # Remove all files
-        os.makedirs(VISUAL_DIR)  # Recreate the directory
-
 
 def load_data():
     # Load main dataset

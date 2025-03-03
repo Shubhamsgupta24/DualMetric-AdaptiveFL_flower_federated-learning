@@ -5,7 +5,6 @@ import numpy as np
 import os, sys
 import json
 import pickle
-import shutil
 from sklearn.preprocessing import LabelEncoder
 from tensorflow.keras.preprocessing.text import Tokenizer # type: ignore
 from tensorflow.keras.preprocessing.sequence import pad_sequences # type: ignore
@@ -24,22 +23,6 @@ CLIENT_MODEL_DIR = "./ClientModel"
 
 # Setting print options for better readability where precision is the decimal digits to be printed and threshold is the number of array elements which triggers summarization in a numpy array.
 np.set_printoptions(precision=5, threshold=50)
-
-# Clear the Tokenizer,Label Encoder and ClientModel directories before savint them
-if os.path.exists(TOKENIZER_DIR):
-    os.chmod(TOKENIZER_DIR, 0o777)
-    shutil.rmtree(TOKENIZER_DIR)  # Remove all files
-os.makedirs(TOKENIZER_DIR)  # Recreate the directory
-
-if os.path.exists(LABEL_ENCODER_DIR):
-    os.chmod(LABEL_ENCODER_DIR, 0o777)
-    shutil.rmtree(LABEL_ENCODER_DIR) # Remove all files
-os.makedirs(LABEL_ENCODER_DIR) # Recreate the directory
-
-if os.path.exists(CLIENT_MODEL_DIR):
-    os.chmod(CLIENT_MODEL_DIR, 0o777)
-    shutil.rmtree(CLIENT_MODEL_DIR) # Remove all files
-os.makedirs(CLIENT_MODEL_DIR) # Recreate the directory
 
 # Client-specific data loading
 def load_client_data(client_id):
