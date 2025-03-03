@@ -7,7 +7,7 @@ LABEL_ENCODER_DIR="./LabelEncoder"
 CLIENT_MODEL_DIR="./ClientModel"
 TRAIN_DIR="./Dataset/Train"
 TEST_DIR="./Dataset/Test"
-VISUAL_DIR="./Dataset/Visualizations"
+VISUAL_DIR="./Visualizations"
 
 # 1) Remove and recreate the directory to ensure it's empty
 rm -rf "$OUTPUT_DIR"

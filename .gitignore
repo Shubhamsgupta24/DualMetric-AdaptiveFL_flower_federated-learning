@@ -24,4 +24,4 @@ envs/
 # Ignore Test, Train and Visualizations splits
 Dataset/Test/*
 Dataset/Train/*
-Dataset/Visualizations/*
+Visualizations/*
