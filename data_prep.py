@@ -134,6 +134,55 @@ def prepare_train_data_noniid_1(train_data):
         except Exception as e:
             print(f"Error saving client {client_id} dataset: {e}")
 
+def prepare_train_data_noniid_2(train_data):
+    '''
+    Prepare client-specific datasets where each client is assigned a primary category
+    and gets a random sample from a subset of other categories.
+    This is an example of Non-IID data distribution wherein we have considered case 2 of biasness and we have hardcoded the distribution taking consideration of 6 Clients.
+    '''
+
+    # 1) Encode category labels as numeric indexes (0-10)
+    label_encoder = LabelEncoder()
+    train_data['category'] = label_encoder.fit_transform(train_data['category'])  # Convert to numeric indexes
+
+    # 2) Regroup dataset using numeric indexes instead of category names
+    grouped_data = {idx: group for idx, group in train_data.groupby("category")}  # Store groups in a dictionary
+
+    # 3) Define client-specific category allocation (no row sharing)
+    client_categories = {
+        0: {"primary": [0, 6], "secondary": [10, 5, 4]},
+        1: {"primary": [1, 6], "secondary": [9, 0, 5]},
+        2: {"primary": [2, 7], "secondary": [9, 1, 0]},
+        3: {"primary": [3, 7], "secondary": [9, 2, 1]},
+        4: {"primary": [4, 8], "secondary": [10, 3, 2]},
+        5: {"primary": [5, 8], "secondary": [10, 4, 3]}
+    }
+
+    # 4) Assign data to clients (ensuring no row is shared)
+    for client_id, categories in client_categories.items():
+        primary_data = pd.concat([grouped_data[cat].sample(frac=0.50, random_state=42) for cat in categories["primary"]])
+        secondary_data = pd.concat([grouped_data[cat].sample(frac=0.33 if cat == 10 else 0.25, random_state=42) for cat in categories["secondary"]])
+
+        # Get categories NOT assigned to this client
+        all_categories = set(grouped_data.keys())
+        assigned_categories = set(categories["primary"] + categories["secondary"])
+        unknown_categories = list(all_categories - assigned_categories)
+
+        # Sample n rows from each unknown category
+        extra_data = pd.concat([grouped_data[cat].sample(n=2, random_state=42, replace=True) for cat in unknown_categories])
+        client_data = pd.concat([primary_data, secondary_data, extra_data]).sample(frac=1.0, random_state=42)  # Shuffle
+
+        # Convert category indexes back to labels
+        client_data["category"] = label_encoder.inverse_transform(client_data["category"])
+
+        # Save to CSV
+        client_file = os.path.join(TRAIN_DIR, f'train_data_client{client_id}.csv')
+        try:
+            client_data.to_csv(client_file, index=False)
+            print(f"Client {client_id} non-IID dataset saved successfully at: {client_file}")
+        except Exception as e:
+            print(f"Error saving client {client_id} dataset: {e}")
+
 if __name__ == "__main__":
     data = load_data()
     train_data, test_data = split_data(data)
@@ -142,6 +191,7 @@ if __name__ == "__main__":
     # prepare_train_data_iid(train_data,8) # NUM_CLIENTS = 8
     prepare_train_data_noniid_0(train_data,11) # NUM_CLIENTS = 11
     # prepare_train_data_noniid_1(train_data) # NUM_CLIENTS = 6 by default
+    # prepare_train_data_noniid_2(train_data) # NUM_CLIENTS = 6 (n rows each)
 
     visualize_client_datasets(TRAIN_DIR, VISUAL_DIR)
     visualize_test_dataset(TEST_DIR, VISUAL_DIR)
