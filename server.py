@@ -10,7 +10,7 @@ CAUTION:
 '''
 
 # Global variables
-NUM_CLIENTS = 6
+NUM_CLIENTS = 11
 NUM_ROUNDS = 2
 
 class CustomStrategy(fl.server.strategy.FedAvg):

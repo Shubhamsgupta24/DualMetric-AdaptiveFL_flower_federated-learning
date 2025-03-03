@@ -17,7 +17,7 @@ CAUTION:
 '''
 
 # Global variables
-NUM_CLIENTS = 6
+NUM_CLIENTS = 11
 TOKENIZER_DIR = "./Tokenizer"
 LABEL_ENCODER_DIR = "./LabelEncoder"
 CLIENT_MODEL_DIR = "./ClientModel"
@@ -27,14 +27,17 @@ np.set_printoptions(precision=5, threshold=50)
 
 # Clear the Tokenizer,Label Encoder and ClientModel directories before savint them
 if os.path.exists(TOKENIZER_DIR):
+    os.chmod(TOKENIZER_DIR, 0o777)
     shutil.rmtree(TOKENIZER_DIR)  # Remove all files
 os.makedirs(TOKENIZER_DIR)  # Recreate the directory
 
 if os.path.exists(LABEL_ENCODER_DIR):
+    os.chmod(LABEL_ENCODER_DIR, 0o777)
     shutil.rmtree(LABEL_ENCODER_DIR) # Remove all files
 os.makedirs(LABEL_ENCODER_DIR) # Recreate the directory
 
 if os.path.exists(CLIENT_MODEL_DIR):
+    os.chmod(CLIENT_MODEL_DIR, 0o777)
     shutil.rmtree(CLIENT_MODEL_DIR) # Remove all files
 os.makedirs(CLIENT_MODEL_DIR) # Recreate the directory
 

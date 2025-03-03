@@ -14,6 +14,14 @@ envs/
 # Ignore Jupyter notebook checkpoints
 .ipynb_checkpoints/
 
-# Ignore logs and temporary files
+# Ignore logs, Label encoders, Client models, Tokenizers and temporary files
 *.log
 *.tmp
+*.keras
+*.pkl
+*.json
+
+# Ignore Test, Train and Visualizations splits
+./Dataset/Test/*
+./Dataset/Train/*
+./Dataset/Visualizations/*

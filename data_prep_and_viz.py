@@ -13,10 +13,22 @@ TEST_DIR = './Dataset/Test'
 VISUAL_DIR = './Dataset/Visualizations'
 TEST_SIZE = 0.1 # Percentage of data for testing from the main dataset
 
-# Ensure directories exist
-os.makedirs(TRAIN_DIR, exist_ok=True)
-os.makedirs(TEST_DIR, exist_ok=True)
-os.makedirs(VISUAL_DIR, exist_ok=True)
+# Cleaning the directory before saving 
+if os.path.exists(TRAIN_DIR):
+        os.chmod(TRAIN_DIR, 0o777)
+        shutil.rmtree(TRAIN_DIR)  # Remove all files
+        os.makedirs(TRAIN_DIR)  # Recreate the directory
+
+if os.path.exists(TEST_DIR):
+        os.chmod(TEST_DIR, 0o777)
+        shutil.rmtree(TEST_DIR)  # Remove all files
+        os.makedirs(TEST_DIR)  # Recreate the directory
+
+if os.path.exists(VISUAL_DIR):
+        os.chmod(VISUAL_DIR, 0o777)
+        shutil.rmtree(VISUAL_DIR)  # Remove all files
+        os.makedirs(VISUAL_DIR)  # Recreate the directory
+
 
 def load_data():
     # Load main dataset
@@ -53,12 +65,7 @@ def prepare_train_data_iid(train_data,NUM_CLIENTS):
     # 1) Partitioning the dataset into NUM_CLIENTS equal splits
     data_splits = np.array_split(train_data, NUM_CLIENTS)
 
-    # 2) Clear the train directory before saving
-    if os.path.exists(TRAIN_DIR):
-        shutil.rmtree(TRAIN_DIR)  # Remove all files
-    os.makedirs(TRAIN_DIR)  # Recreate the directory
-
-    # 3) Save each client's data
+    # 2) Save each client's data
     for client_id, client_data in enumerate(data_splits):
         client_file = os.path.join(TRAIN_DIR, f'train_data_client{client_id}.csv')
         try:
@@ -82,12 +89,7 @@ def prepare_train_data_noniid_0(train_data,NUM_CLIENTS):
     if NUM_CLIENTS > len(categories):
         raise ValueError(f"NUM_CLIENTS ({NUM_CLIENTS}) is greater than available categories ({len(categories)}).")
 
-    # 3) Clear the train directory before saving
-    if os.path.exists(TRAIN_DIR):
-        shutil.rmtree(TRAIN_DIR)  # Remove all files
-    os.makedirs(TRAIN_DIR)  # Recreate the directory
-
-    # 4) Assign categories to clients and create client-specific datasets
+    # 3) Assign categories to clients and create client-specific datasets
     for client_id, category in enumerate(categories[:NUM_CLIENTS]):  # Assign each client a primary category
         client_data = grouped_data.get_group(category)
 
@@ -134,12 +136,7 @@ def prepare_train_data_noniid_1(train_data):
         5: {"primary": [5, 8], "secondary": [10, 4, 3]}
     }
 
-    # 4) Clear the train directory before saving
-    if os.path.exists(TRAIN_DIR):
-        shutil.rmtree(TRAIN_DIR)  # Remove all files
-    os.makedirs(TRAIN_DIR)  # Recreate the directory
-
-    # 5) Assign data to clients (ensuring no row is shared)
+    # 4) Assign data to clients (ensuring no row is shared)
     for client_id, categories in client_categories.items():
         primary_data = pd.concat([grouped_data[cat].sample(frac=0.50, random_state=42) for cat in categories["primary"]])
         secondary_data = pd.concat([grouped_data[cat].sample(frac=0.33 if cat == 10 else 0.25, random_state=42) for cat in categories["secondary"]])
@@ -282,8 +279,8 @@ if __name__ == "__main__":
     save_test_data(test_data)
 
     # prepare_train_data_iid(train_data,8) # NUM_CLIENTS = 8
-    # prepare_train_data_noniid_0(train_data,11) # NUM_CLIENTS = 11
-    prepare_train_data_noniid_1(train_data) # NUM_CLIENTS = 6 by default
+    prepare_train_data_noniid_0(train_data,11) # NUM_CLIENTS = 11
+    # prepare_train_data_noniid_1(train_data) # NUM_CLIENTS = 6 by default
 
     visualize_client_datasets()
     visualize_test_dataset()
