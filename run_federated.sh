@@ -1,6 +1,6 @@
 #!/bin/bash
 
-NUM_CLIENTS=11
+NUM_CLIENTS=6
 OUTPUT_DIR="./Outputs"
 TOKENIZED_DIR="./Tokenizer"
 LABEL_ENCODER_DIR="./LabelEncoder"
@@ -34,7 +34,7 @@ rm -rf "$CLIENT_MODEL_DIR"
 mkdir -p "$CLIENT_MODEL_DIR"
 
 # 4) Running the data preparation script to prepare the data for the clients and visualize it
-python data_prep_and_viz.py > "$OUTPUT_DIR/DataPrep.log" 2>&1
+python data_prep.py > "$OUTPUT_DIR/DataPrep.log" 2>&1
 
 # 5) Start the server and redirect its output
 python server.py > "$OUTPUT_DIR/Server.log" 2>&1 &

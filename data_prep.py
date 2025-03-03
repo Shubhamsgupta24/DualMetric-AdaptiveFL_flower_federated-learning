@@ -189,9 +189,9 @@ if __name__ == "__main__":
     save_test_data(test_data)
 
     # prepare_train_data_iid(train_data,8) # NUM_CLIENTS = 8
-    prepare_train_data_noniid_0(train_data,11) # NUM_CLIENTS = 11
+    # prepare_train_data_noniid_0(train_data,11) # NUM_CLIENTS = 11
     # prepare_train_data_noniid_1(train_data) # NUM_CLIENTS = 6 by default
-    # prepare_train_data_noniid_2(train_data) # NUM_CLIENTS = 6 (n rows each)
+    prepare_train_data_noniid_2(train_data) # NUM_CLIENTS = 6 (n rows each)
 
     visualize_client_datasets(TRAIN_DIR, VISUAL_DIR)
     visualize_test_dataset(TEST_DIR, VISUAL_DIR)

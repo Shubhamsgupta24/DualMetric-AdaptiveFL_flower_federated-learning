@@ -16,7 +16,7 @@ CAUTION:
 '''
 
 # Global variables
-NUM_CLIENTS = 11
+NUM_CLIENTS = 6
 TOKENIZER_DIR = "./Tokenizer"
 LABEL_ENCODER_DIR = "./LabelEncoder"
 CLIENT_MODEL_DIR = "./ClientModel"
@@ -165,6 +165,18 @@ class BitextClient(fl.client.NumPyClient):
         return self.model.get_weights(), len(self.X_train), {"loss": loss, "accuracy": accuracy}
 
     def evaluate(self, parameters, config):
+        # Clear previous results before first evaluation round
+        eval_results_dir = "GlobalEvalResults"
+        os.makedirs(eval_results_dir, exist_ok=True)
+
+        if self.local_round == 0:
+            for file in os.listdir(eval_results_dir):
+                file_path = os.path.join(eval_results_dir, file)
+                try:
+                    os.remove(file_path)
+                except Exception as e:
+                    print(f"Error deleting {file_path}: {e}")
+            
         # 1) Set the model’s weights to the values passed as parameters.
         self.model.set_weights(parameters)
 
@@ -177,6 +189,23 @@ class BitextClient(fl.client.NumPyClient):
         # 3) Evaluate the model on the global test data and return the loss and accuracy
         global_loss, global_accuracy = self.model.evaluate(self.X_test, self.y_test, verbose=2)
         print(f"\nClient {self.client_id} - Global Evaluation Loss: {global_loss:.4f}, Accuracy: {global_accuracy:.4f}\n",flush=True)
+
+        # Save global evaluation accuracy to JSON
+        eval_file = os.path.join(eval_results_dir, f"client{self.client_id}_global_eval.json")
+
+        # Load existing data if file exists
+        if os.path.exists(eval_file):
+            with open(eval_file, "r") as f:
+                eval_history = json.load(f)
+        else:
+            eval_history = {}
+
+        # Append new accuracy result
+        eval_history[str(self.local_round)] = global_accuracy
+
+        # Save back to file
+        with open(eval_file, "w") as f:
+            json.dump(eval_history, f, indent=4)
 
 
         print(f"============= Client {self.client_id} Testing Completed =============",flush=True)

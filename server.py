@@ -3,6 +3,8 @@ from typing import List, Tuple, Optional, Dict, Union
 from flwr.common import Scalar, NDArrays, Parameters, FitRes, EvaluateRes, ndarrays_to_parameters, parameters_to_ndarrays
 from flwr.server.client_proxy import ClientProxy
 from flwr.server.strategy.aggregate import aggregate
+from visualisations import visualize_global_accuracy
+import os
 
 '''
 CAUTION:
@@ -10,7 +12,7 @@ CAUTION:
 '''
 
 # Global variables
-NUM_CLIENTS = 11
+NUM_CLIENTS = 6
 NUM_ROUNDS = 2
 
 class CustomStrategy(fl.server.strategy.FedAvg):
@@ -173,4 +175,12 @@ fl.server.start_server(
     strategy=strategy
 )
 
+EVAL_RESULTS_DIR = "GlobalEvalResults"
+VISUAL_DIR = "Visualizations"
+
+# Ensure directory exists
+os.makedirs(VISUAL_DIR, exist_ok=True)
+
+# Call function to visualize accuracy trends
+visualize_global_accuracy(EVAL_RESULTS_DIR, VISUAL_DIR)
 print("\nFederated learning completed.", flush=True)
