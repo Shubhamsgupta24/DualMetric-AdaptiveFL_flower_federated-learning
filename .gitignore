@@ -17,11 +17,11 @@ envs/
 # Ignore logs, Label encoders, Client models, Tokenizers and temporary files
 *.log
 *.tmp
-*.keras
-*.pkl
-*.json
+# *.keras
+# *.pkl
+# *.json
 
 # Ignore Test, Train and Visualizations splits
-./Dataset/Test/*
-./Dataset/Train/*
-./Dataset/Visualizations/*
+# ./Dataset/Test/*
+# ./Dataset/Train/*
+# ./Dataset/Visualizations/*
