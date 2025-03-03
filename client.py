@@ -165,7 +165,7 @@ class BitextClient(fl.client.NumPyClient):
         return self.model.get_weights(), len(self.X_train), {"loss": loss, "accuracy": accuracy}
 
     def evaluate(self, parameters, config):
-        # Clear previous results before first evaluation round
+        # 1) Clear previous results before first evaluation round
         eval_results_dir = "GlobalEvalResults"
         os.makedirs(eval_results_dir, exist_ok=True)
 
@@ -177,20 +177,20 @@ class BitextClient(fl.client.NumPyClient):
                 except Exception as e:
                     print(f"Error deleting {file_path}: {e}")
             
-        # 1) Set the model’s weights to the values passed as parameters.
+        # 2) Set the model’s weights to the values passed as parameters.
         self.model.set_weights(parameters)
 
         print(f"\n################## STEP 2 for Round {self.local_round}: Local and Global Model Testing on Clients Side and updating the Client Model for client {self.client_id} ######################\n", flush=True)
 
-        # 2) Evaluate the model on the clients local training data and return the loss and accuracy
+        # 3) Evaluate the model on the clients local training data and return the loss and accuracy
         local_loss, local_accuracy = self.model.evaluate(self.X_train, self.y_train, verbose=2)
         print(f"\nClient {self.client_id} - Local Evaluation Loss: {local_loss:.4f}, Accuracy: {local_accuracy:.4f}\n",flush=True)
 
-        # 3) Evaluate the model on the global test data and return the loss and accuracy
+        # 4) Evaluate the model on the global test data and return the loss and accuracy
         global_loss, global_accuracy = self.model.evaluate(self.X_test, self.y_test, verbose=2)
         print(f"\nClient {self.client_id} - Global Evaluation Loss: {global_loss:.4f}, Accuracy: {global_accuracy:.4f}\n",flush=True)
 
-        # Save global evaluation accuracy to JSON
+        # 5) Save global evaluation accuracy to JSON
         eval_file = os.path.join(eval_results_dir, f"client{self.client_id}_global_eval.json")
 
         # Load existing data if file exists
