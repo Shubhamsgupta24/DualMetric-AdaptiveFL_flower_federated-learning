@@ -35,7 +35,7 @@ def visualize_client_datasets(TRAIN_DIR, VISUAL_DIR):
 
     # Define grid size for subplots
     num_clients = len(client_files)
-    cols = 4  # 4 clients per row
+    cols = 3  # 4 clients per row
     rows = (num_clients // cols) + (num_clients % cols > 0)  # Calculate needed rows
 
     fig, axes = plt.subplots(rows, cols, figsize=(18, 10))
@@ -149,7 +149,7 @@ def visualize_global_accuracy(eval_results_dir, visual_dir):
 
     # Determine number of clients
     num_clients = len(client_accuracies)
-    cols = 4  # 4 clients per row
+    cols = 3  # 4 clients per row
     rows = (num_clients // cols) + (num_clients % cols > 0)  # Calculate needed rows
 
     fig, axes = plt.subplots(rows, cols, figsize=(18, 10))
