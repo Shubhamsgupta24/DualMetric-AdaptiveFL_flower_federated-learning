@@ -123,7 +123,6 @@ def visualize_test_dataset(TEST_DIR, VISUAL_DIR):
     except Exception as e:
         print(f"Error saving visualization: {e}")
 
-
 def visualize_global_accuracy(eval_results_dir, visual_dir):
     """
     Plots the global evaluation accuracy for each client across rounds.

@@ -20,6 +20,7 @@ NUM_CLIENTS = 6
 TOKENIZER_DIR = "./Tokenizer"
 LABEL_ENCODER_DIR = "./LabelEncoder"
 CLIENT_MODEL_DIR = "./ClientModel"
+GLOBAL_EVAL_RESULTS_DIR = "./GlobalEvalResults"
 
 # Setting print options for better readability where precision is the decimal digits to be printed and threshold is the number of array elements which triggers summarization in a numpy array.
 np.set_printoptions(precision=5, threshold=50)
@@ -165,37 +166,26 @@ class BitextClient(fl.client.NumPyClient):
         return self.model.get_weights(), len(self.X_train), {"loss": loss, "accuracy": accuracy}
 
     def evaluate(self, parameters, config):
-        # 1) Clear previous results before first evaluation round
-        eval_results_dir = "GlobalEvalResults"
-        os.makedirs(eval_results_dir, exist_ok=True)
-
-        if self.local_round == 0:
-            for file in os.listdir(eval_results_dir):
-                file_path = os.path.join(eval_results_dir, file)
-                try:
-                    os.remove(file_path)
-                except Exception as e:
-                    print(f"Error deleting {file_path}: {e}")
             
-        # 2) Set the model’s weights to the values passed as parameters.
+        # 1) Set the model’s weights to the values passed as parameters.
         self.model.set_weights(parameters)
 
         print(f"\n################## STEP 2 for Round {self.local_round}: Local and Global Model Testing on Clients Side and updating the Client Model for client {self.client_id} ######################\n", flush=True)
 
-        # 3) Evaluate the model on the clients local training data and return the loss and accuracy
+        # 2) Evaluate the model on the clients local training data and return the loss and accuracy
         local_loss, local_accuracy = self.model.evaluate(self.X_train, self.y_train, verbose=2)
         print(f"\nClient {self.client_id} - Local Evaluation Loss: {local_loss:.4f}, Accuracy: {local_accuracy:.4f}\n",flush=True)
 
-        # 4) Evaluate the model on the global test data and return the loss and accuracy
+        # 3) Evaluate the model on the global test data and return the loss and accuracy
         global_loss, global_accuracy = self.model.evaluate(self.X_test, self.y_test, verbose=2)
         print(f"\nClient {self.client_id} - Global Evaluation Loss: {global_loss:.4f}, Accuracy: {global_accuracy:.4f}\n",flush=True)
 
-        # 5) Save global evaluation accuracy to JSON
-        eval_file = os.path.join(eval_results_dir, f"client{self.client_id}_global_eval.json")
+        # 4) Save global evaluation accuracy to JSON
+        global_eval_file_path = os.path.join(GLOBAL_EVAL_RESULTS_DIR, f"client{self.client_id}_global_eval.json")
 
         # Load existing data if file exists
-        if os.path.exists(eval_file):
-            with open(eval_file, "r") as f:
+        if os.path.exists(global_eval_file_path):
+            with open(global_eval_file_path, "r") as f:
                 eval_history = json.load(f)
         else:
             eval_history = {}
@@ -204,7 +194,7 @@ class BitextClient(fl.client.NumPyClient):
         eval_history[str(self.local_round)] = global_accuracy
 
         # Save back to file
-        with open(eval_file, "w") as f:
+        with open(global_eval_file_path, "w") as f:
             json.dump(eval_history, f, indent=4)
 
 

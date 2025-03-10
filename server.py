@@ -13,7 +13,12 @@ CAUTION:
 
 # Global variables
 NUM_CLIENTS = 6
-NUM_ROUNDS = 2
+NUM_ROUNDS = 3
+EVAL_RESULTS_DIR = "GlobalEvalResults"
+VISUAL_DIR = "Visualizations"
+
+# Ensure directory exists
+os.makedirs(VISUAL_DIR, exist_ok=True)
 
 class CustomStrategy(fl.server.strategy.FedAvg):
 
@@ -175,12 +180,7 @@ fl.server.start_server(
     strategy=strategy
 )
 
-EVAL_RESULTS_DIR = "GlobalEvalResults"
-VISUAL_DIR = "Visualizations"
-
-# Ensure directory exists
-os.makedirs(VISUAL_DIR, exist_ok=True)
-
 # Call function to visualize accuracy trends
 visualize_global_accuracy(EVAL_RESULTS_DIR, VISUAL_DIR)
+
 print("\nFederated learning completed.", flush=True)

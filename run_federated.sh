@@ -8,6 +8,7 @@ CLIENT_MODEL_DIR="./ClientModel"
 TRAIN_DIR="./Dataset/Train"
 TEST_DIR="./Dataset/Test"
 VISUAL_DIR="./Visualizations"
+GLOBAL_EVAL_RESULTS_DIR="./GlobalEvalResults"
 
 # 1) Remove and recreate the directory to ensure it's empty
 rm -rf "$OUTPUT_DIR"
@@ -32,6 +33,9 @@ mkdir -p "$LABEL_ENCODER_DIR"
 
 rm -rf "$CLIENT_MODEL_DIR"
 mkdir -p "$CLIENT_MODEL_DIR"
+
+rm -rf "$GLOBAL_EVAL_RESULTS_DIR"
+mkdir -p "$GLOBAL_EVAL_RESULTS_DIR"
 
 # 4) Running the data preparation script to prepare the data for the clients and visualize it
 python data_prep.py > "$OUTPUT_DIR/DataPrep.log" 2>&1
