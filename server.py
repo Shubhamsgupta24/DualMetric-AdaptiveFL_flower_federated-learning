@@ -26,7 +26,7 @@ class CustomStrategy(fl.server.strategy.FedAvg):
         '''
         Initializing the parent class i.e fl.server.strategy.FedAvg where args is the positional arguments in the form of a tuple and kwargs is the keyword arguments in the form of a dictionary.
         Here we have considered kwargs: {"min_available_clients": NUM_CLIENTS,"min_fit_clients": NUM_CLIENTS,"min_evaluate_clients": NUM_CLIENTS}.
-        Also, we have initialized the central_model to None that will store weights later on.
+        Also, we have initialized the central_model to None that will store weights later on implementating pretraining.
         '''
         super().__init__(*args, **kwargs)
         self.central_model = None
