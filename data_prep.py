@@ -9,11 +9,12 @@ from visualisations import visualize_client_datasets, visualize_test_dataset
 TRAIN_DIR = './Dataset/Train'
 TEST_DIR = './Dataset/Test'
 VISUAL_DIR = './Visualizations'
+DATA_PATH='./Dataset/Bitext_Sample_Customer_Support_Training_Dataset_27K_responses-v11.csv'
 TEST_SIZE = 0.1 # Percentage of data for testing from the main dataset
 
 def load_data():
     # Load main dataset
-    data_path = './Dataset/Bitext_Sample_Customer_Support_Training_Dataset_27K_responses-v11.csv'
+    data_path = DATA_PATH
     
     if not os.path.exists(data_path):
         raise FileNotFoundError(f"Dataset not found: {data_path}")
