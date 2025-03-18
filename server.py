@@ -13,7 +13,7 @@ CAUTION:
 
 # Global variables
 NUM_CLIENTS = 6
-NUM_ROUNDS = 3
+NUM_ROUNDS = 50
 EVAL_RESULTS_DIR = "GlobalEvalResults"
 VISUAL_DIR = "Visualizations"
 

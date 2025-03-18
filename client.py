@@ -104,7 +104,7 @@ def create_model(input_shape, num_classes):
         tf.keras.layers.Embedding(800, 32),
         tf.keras.layers.GlobalAveragePooling1D(),
         tf.keras.layers.Dense(32, activation='relu',kernel_regularizer=tf.keras.regularizers.l2(0.001)),
-        tf.keras.layers.BatchNormalization(),
+        tf.keras.layers.BatchNormalization(trainable=True),
         tf.keras.layers.Dense(num_classes, activation='softmax',kernel_regularizer=tf.keras.regularizers.l2(0.001))
     ])
 
@@ -139,26 +139,74 @@ class BitextClient(fl.client.NumPyClient):
 
         print(f"\n######################## STEP 1 for Round {self.local_round}: Local Model Training for Client {self.client_id} ######################\n", flush=True)
         
-        # 1) Set the model’s weights to the values passed as parameters.
+        # 1) Set the model’s weights to the values passed as parameters and storing global weights for fedprox loss.
         self.model.set_weights(parameters)
-        print("\nModel Weights Before training:", flush=True)
+        global_weights = parameters  # Store global weights for FedProx
+
+        # 2) Get the trainable weights correctly by matching layer names
+        global_trainable_weights = []
+        trainable_var_names = {v.name for v in self.model.trainable_variables}
+
+        print ("Trainable Variable Names:",flush=True)
+        for i, var in enumerate(self.model.trainable_variables):
+            print(f"{i}: {var.name}",flush=True)
+
+        print("Non-Trainable Variable Names:",flush=True)
+        for i, var in enumerate(self.model.non_trainable_variables):
+            print(f"{i}: {var.name}",flush=True)
+
+        for w, var in zip(global_weights, self.model.weights):  
+            if var.name in trainable_var_names:  
+                global_trainable_weights.append(w)
+
+        print("\n=== Local Model Weights ===", flush=True)
+        for i, weight in enumerate(self.model.trainable_weights):
+            print(f"Layer {i}: Shape {weight.shape}", flush=True)
+
+        print("\n=== Global Weights Received from Server (have excluded non-trainable weights) ===", flush=True)
+        for i, weight in enumerate(global_trainable_weights):
+            print(f"Layer {i}: Shape {weight.shape}", flush=True)
+
+        print("\nModel Weights Before training :", flush=True)
         for i, weight in enumerate(self.model.get_weights()):
             print(f"\nWeight {i+1}: {weight.shape}\n{weight}", flush=True)
 
-        # 2) Train the model for 5 epochs(rounds) with a batch size of 64 and a validation split of 20%.The training data is used to adjust the weights of the model and the validation data is used to evaluate the model after each epoch to see how well it is generalizing to unseen data.Batch size controls how many samples the model processes before updating weights. A smaller batch size means that the model is updated more often and the learning has more variance. A larger batch size means that the model is updated less often and the learning has less variance.Verbose is used for displaying the training process.
         print(f"\nStarting local training for client {self.client_id}...\n")
+        
+        # 3) FedProx mu (regularization parameter) - mu controls how much clients deviate from the global model. Higher mu makes local updates more similar to the global model and lower mu makes local updates more similar to the local data.
+        mu = config.get("proximal_mu", 0.01)
 
-        # Early stopping callback to stop training when the loss stops decreasing and it will continue for 3 epochs before stopping and restore_best_weights is used to restore the weights of the model when the training stops.
+        # 4) Defining a custom loss function to include the proximal term used in FedProx strategy
+        def fedprox_loss(y_true, y_pred):
+            base_loss = tf.keras.losses.sparse_categorical_crossentropy(y_true, y_pred)
+            
+            # Compute proximal regularization term
+            prox_term = 0
+            for w, w_g in zip(self.model.trainable_weights, global_trainable_weights):
+                squared_difference = tf.square(w - w_g)  # Element-wise square
+                sum_squared = tf.reduce_sum(squared_difference)  # Sum of squared differences
+                prox_term += sum_squared  # Accumulate across all layers
+
+            # Final loss = base loss + FedProx regularization term
+            final_loss = base_loss + (mu / 2) * prox_term
+            return final_loss
+
+        # 5) Compile the model again with FedProx loss which includes the proximal term.
+        self.model.compile(optimizer='adam', loss=fedprox_loss, metrics=['accuracy'])
+
+        # 6) Early stopping callback to stop training when the loss stops decreasing and it will continue for 3 epochs before stopping and restore_best_weights is used to restore the weights of the model when the training stops.
         early_stopping = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=3, restore_best_weights=True)
 
+        # 7) Train the model for 5 epochs(rounds) with a batch size of 64 and a validation split of 30%.The training data is used to adjust the weights of the model and the validation data is used to evaluate the model after each epoch to see how well it is generalizing to unseen data.Batch size controls how many samples the model processes before updating weights. A smaller batch size means that the model is updated more often and the learning has more variance. A larger batch size means that the model is updated less often and the learning has less variance.Verbose is used for displaying the training process.
         history = self.model.fit(self.X_train, self.y_train, epochs=10, batch_size=64, validation_split=0.3, verbose=2,callbacks=[early_stopping])
+
         try:
             self.model.save(self.model_path)
             print(f"\nModel for client {self.client_id} saved successfully at {self.model_path}\n", flush=True)
         except Exception as e:
             print(f"\nError saving model for client {self.client_id}: {str(e)}", flush=True)
         
-        # 3) Accessing the loss and accuracy of the model after training
+        # 8) Accessing the loss and accuracy of the model after training
         loss = history.history['loss'][-1]
         accuracy = history.history['accuracy'][-1]
 
