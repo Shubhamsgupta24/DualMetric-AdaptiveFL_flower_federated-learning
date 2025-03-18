@@ -101,11 +101,11 @@ def create_model(input_shape, num_classes):
     '''
 
     model = tf.keras.Sequential([
-        tf.keras.layers.Embedding(800, 64),
+        tf.keras.layers.Embedding(800, 32),
         tf.keras.layers.GlobalAveragePooling1D(),
-        tf.keras.layers.Dense(64, activation='relu'),
+        tf.keras.layers.Dense(32, activation='relu',kernel_regularizer=tf.keras.regularizers.l2(0.001)),
         tf.keras.layers.BatchNormalization(),
-        tf.keras.layers.Dense(num_classes, activation='softmax')
+        tf.keras.layers.Dense(num_classes, activation='softmax',kernel_regularizer=tf.keras.regularizers.l2(0.001))
     ])
 
     # 2) Compiled the model with adam optimizer, sparse categorical crossentropy loss and accuracy as the metric.Adam (Adaptive Moment Estimation) adapts the learning rate during training i.e how big or small each correction should be by keeping track of momentum.Sparse Categorical Crossentropy is used when the classes are mutually exclusive (each entry is in exactly one class) and it measures how much far is the predicted probabilities are from the correct label: Loss = -log(P(correct class)) .The loss function measures how well the model is performing on its training data and then the optimizer tries to minimize this loss function.The metric is used to judge the performance of the model: Accuracy = (Number of correct predictions / Total predictions) * 100
@@ -147,7 +147,11 @@ class BitextClient(fl.client.NumPyClient):
 
         # 2) Train the model for 5 epochs(rounds) with a batch size of 64 and a validation split of 20%.The training data is used to adjust the weights of the model and the validation data is used to evaluate the model after each epoch to see how well it is generalizing to unseen data.Batch size controls how many samples the model processes before updating weights. A smaller batch size means that the model is updated more often and the learning has more variance. A larger batch size means that the model is updated less often and the learning has less variance.Verbose is used for displaying the training process.
         print(f"\nStarting local training for client {self.client_id}...\n")
-        history = self.model.fit(self.X_train, self.y_train, epochs=10, batch_size=64, validation_split=0.2, verbose=2)
+
+        # Early stopping callback to stop training when the loss stops decreasing and it will continue for 3 epochs before stopping and restore_best_weights is used to restore the weights of the model when the training stops.
+        early_stopping = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=3, restore_best_weights=True)
+
+        history = self.model.fit(self.X_train, self.y_train, epochs=10, batch_size=64, validation_split=0.3, verbose=2,callbacks=[early_stopping])
         try:
             self.model.save(self.model_path)
             print(f"\nModel for client {self.client_id} saved successfully at {self.model_path}\n", flush=True)
