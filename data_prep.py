@@ -189,7 +189,7 @@ if __name__ == "__main__":
     train_data, test_data = split_data(data)
     save_test_data(test_data)
 
-    # prepare_train_data_iid(train_data,8) # NUM_CLIENTS = 8
+    # prepare_train_data_iid(train_data,6) # NUM_CLIENTS = 6
     # prepare_train_data_noniid_0(train_data,11) # NUM_CLIENTS = 11
     # prepare_train_data_noniid_1(train_data) # NUM_CLIENTS = 6 by default
     prepare_train_data_noniid_2(train_data) # NUM_CLIENTS = 6 (n rows each)
