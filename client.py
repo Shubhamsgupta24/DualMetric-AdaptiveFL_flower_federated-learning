@@ -173,10 +173,16 @@ class BitextClient(fl.client.NumPyClient):
 
         print(f"\nStarting local training for client {self.client_id}...\n")
         
-        # 3) FedProx mu (regularization parameter) - mu controls how much clients deviate from the global model. Higher mu makes local updates more similar to the global model and lower mu makes local updates more similar to the local data.
+        # 3) Extracting FedProx mu (regularization parameter) - mu controls how much clients deviate from the global model. Higher mu makes local updates more similar to the global model and lower mu makes local updates more similar to the local data.
         mu = config.get("proximal_mu", 0.01)
 
-        # 4) Defining a custom loss function to include the proximal term used in FedProx strategy
+        # 4) Extract the lr_factor from the config which is used to adjust the learning rate of the model. The learning rate is multiplied by this factor to adjust the learning rate of the model.
+        lr_factor = config.get("lr_factor", 1.0)  # Server-sent lr_factor, default 1.0
+        base_lr = 0.001  # Base learning rate
+
+        print(f"Client {self.client_id} - Using mu: {mu:.4f}, lr_factor: {lr_factor:.4f}, effective learning rate: {base_lr * lr_factor:.6f}", flush=True)
+
+        # 5) Defining a custom loss function to include the proximal term used in FedProx strategy
         def fedprox_loss(y_true, y_pred):
             base_loss = tf.keras.losses.sparse_categorical_crossentropy(y_true, y_pred)
             
@@ -191,13 +197,14 @@ class BitextClient(fl.client.NumPyClient):
             final_loss = base_loss + (mu / 2) * prox_term
             return final_loss
 
-        # 5) Compile the model again with FedProx loss which includes the proximal term.
-        self.model.compile(optimizer='adam', loss=fedprox_loss, metrics=['accuracy'])
+        # 6) Compile the model again with FedProx loss which includes the proximal term and dynamic learning rate.
+        optimizer = tf.keras.optimizers.Adam(learning_rate=base_lr * lr_factor)  # Apply lr_factor to base_lr
+        self.model.compile(optimizer=optimizer, loss=fedprox_loss, metrics=['accuracy'])
 
-        # 6) Early stopping callback to stop training when the loss stops decreasing and it will continue for 3 epochs before stopping and restore_best_weights is used to restore the weights of the model when the training stops.
+        # 7) Early stopping callback to stop training when the loss stops decreasing and it will continue for 3 epochs before stopping and restore_best_weights is used to restore the weights of the model when the training stops.
         early_stopping = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=3, restore_best_weights=True)
 
-        # 7) Train the model for 5 epochs(rounds) with a batch size of 64 and a validation split of 30%.The training data is used to adjust the weights of the model and the validation data is used to evaluate the model after each epoch to see how well it is generalizing to unseen data.Batch size controls how many samples the model processes before updating weights. A smaller batch size means that the model is updated more often and the learning has more variance. A larger batch size means that the model is updated less often and the learning has less variance.Verbose is used for displaying the training process.
+        # 8) Train the model for 5 epochs(rounds) with a batch size of 64 and a validation split of 30%.The training data is used to adjust the weights of the model and the validation data is used to evaluate the model after each epoch to see how well it is generalizing to unseen data.Batch size controls how many samples the model processes before updating weights. A smaller batch size means that the model is updated more often and the learning has more variance. A larger batch size means that the model is updated less often and the learning has less variance.Verbose is used for displaying the training process.
         history = self.model.fit(self.X_train, self.y_train, epochs=10, batch_size=64, validation_split=0.3, verbose=2,callbacks=[early_stopping])
 
         try:

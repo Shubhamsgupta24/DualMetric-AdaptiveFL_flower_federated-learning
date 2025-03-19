@@ -13,7 +13,7 @@ CAUTION:
 
 # Global variables
 NUM_CLIENTS = 6
-NUM_ROUNDS = 50
+NUM_ROUNDS = 100
 EVAL_RESULTS_DIR = "GlobalEvalResults"
 VISUAL_DIR = "Visualizations"
 
@@ -29,8 +29,42 @@ class CustomStrategy(fl.server.strategy.FedAvg):
         Also, we have initialized the central_model to None that will store weights later on implementating pretraining.
         '''
         super().__init__(*args, **kwargs)
-        self.central_model = None
+        self.central_model = None  # Central model (weights) to be used for pretraining
+        # Add attributes for hyperparameter tuning
+        self.client_local_accuracy_history = {}  # {client_id: [local_accuracy_history] containing local accuracy of all rounds}
+        self.client_global_accuracy_history = {}  # {client_id: [global_accuracy_history] containing global accuracy of all rounds}
+        self.client_mu = {}  # {client_id: mu_value}
+        self.client_lr_factor = {}  # {client_id: lr_factor_value}
     
+    def configure_fit(self, server_round: int, parameters: Parameters, client_manager: fl.server.client_manager.ClientManager) -> List[Tuple[ClientProxy, fl.common.FitIns]]:
+        """
+        This method configure_fit is used to configure the fit process for each round of federated learning.
+        It takes input as server_round, parameters, client_manager:
+        1)server_round - Current round number
+        2)parameters - Model weights to be sent to the clients for training
+        3)client_manager - Client manager object which is used to sample clients for training
+        It returns a list of (client, FitIns) tuples with updated config.
+        It overrides configure_fit to send dynamic hyperparameters to clients via Fit Instruction.
+        """
+        # Sample clients
+        sample_clients = client_manager.sample(
+            num_clients=self.min_fit_clients,
+            min_num_clients=self.min_available_clients
+        )
+
+        # Create client-specific FitIns
+        fit_instructions = []
+        for client in sample_clients:
+            client_id = client.cid
+            config = {
+                "proximal_mu": self.client_mu.get(client_id, 0.01),  # Default to 0.01 if not set
+                "lr_factor": self.client_lr_factor.get(client_id, 1.0),  # Default to 1.0 if not set
+                "server_round": server_round
+            }
+            fit_instructions.append((client, fl.common.FitIns(parameters, config)))
+
+        return fit_instructions
+
     def aggregate_fit(self,server_round: int, results: List[Tuple[ClientProxy, FitRes]], failures: list[Union[tuple[ClientProxy, FitRes], BaseException]], ) -> tuple[Optional[Parameters], dict[str, Scalar]]: 
         '''
         This method is used to aggregate the results of the training process from all the clients and return the tuple of (aggregated weights of all clients,aggregated metrics of all the clients).
@@ -90,8 +124,6 @@ class CustomStrategy(fl.server.strategy.FedAvg):
 
         print(f"\nRound {server_round} training set metrics - Aggregated Loss: {metrics_aggregated['loss']:.4f}, Aggregated Accuracy: {metrics_aggregated['accuracy']:.4f}\n", flush=True)
         print(f"\n================= Sending updated model to client for testing and client side updation ===================\n", flush=True)
-
-        # self.central_model = aggregated_weights
         
         return aggregated_weights, metrics_aggregated
 
@@ -116,7 +148,7 @@ class CustomStrategy(fl.server.strategy.FedAvg):
             return None, {}
         
         # ========= PART 1 - Aggregating Local Client Training Set Loss and Metrics =========
-        print("\nIndividual Client Training Set Metrics on Clients Local Training Set:\n")
+        print("\n-> Individual Client Training Set Metrics on Clients Local Training Set:\n")
         total_local_loss = 0
         total_local_accuracy=0
         total_train_examples = 0
@@ -139,7 +171,7 @@ class CustomStrategy(fl.server.strategy.FedAvg):
         print(f"\nRound {server_round} Local Training Set Metrics - Aggregated Loss: {local_loss_aggregated:.4f}, Aggregated Accuracy: {local_accuracy_aggregated:.4f}\n", flush=True)
 
         # ========= PART 2 - Aggregating Global Test Set Loss and Metrics =========
-        print("\nIndividual Client Testing Set Metrics on Global Test Set:\n", flush=True)
+        print("\n-> Individual Client Testing Set Metrics on Global Test Set:\n", flush=True)
         total_global_loss = 0
         total_global_accuracy = 0
         total_test_examples = 0
@@ -160,10 +192,69 @@ class CustomStrategy(fl.server.strategy.FedAvg):
         global_loss_aggregated = total_global_loss / total_test_examples
         global_accuracy_aggregated = total_global_accuracy / total_test_examples
         print(f"\nRound {server_round} Global Testing Set Metrics - Aggregated Loss: {global_loss_aggregated:.4f}, Aggregated Accuracy: {global_accuracy_aggregated:.4f}\n", flush=True)
-        
-        print(f"\n================= Aggregation Completed for Round {server_round} ===================\n", flush=True)
+
+        # ========= PART 3 - Dynamic Hyperparameter Tuning for Each Client =================
+        print(f"\n-> Server Guided Dynamic Hyperparameter Tuning for Better Client Adaption: \n", flush=True)
+
+        for client_idx, (client_proxy, evaluate_res) in enumerate(results):
+                client_id = client_proxy.cid  # Get unique client ID
+                local_accuracy = evaluate_res.metrics["local_accuracy"]
+                global_accuracy = evaluate_res.metrics["global_accuracy"]
+
+                # Initialize client history if not present
+                if client_id not in self.client_local_accuracy_history:
+                    self.client_local_accuracy_history[client_id] = []
+                    self.client_global_accuracy_history[client_id] = []
+                    self.client_mu[client_id] = 0.01  # Initial mu
+                    self.client_lr_factor[client_id] = 1.0  # Initial lr_factor
+
+                # Append to client-specific history
+                self.client_local_accuracy_history[client_id].append(local_accuracy)
+                self.client_global_accuracy_history[client_id].append(global_accuracy)
+
+        # Call the tuning function after collecting all metrics
+        self.tune_client_hyperparameters(server_round,global_accuracy_aggregated,local_accuracy_aggregated)
+
+        print(f"\n============= Aggregation Completed for Round {server_round} ==============\n", flush=True)
         
         return local_loss_aggregated, {"local_accuracy": local_accuracy_aggregated,"global_loss": global_loss_aggregated,"global_accuracy": global_accuracy_aggregated}
+    
+    def tune_client_hyperparameters(self, server_round: int,global_accuracy_aggregated: float,local_accuracy_aggregated: float):
+        """
+        Tune both mu and lr_factor for each client based on their global accuracy trend.
+        Aim to improve accuracy beyond baseline with conservative adjustments.
+        """
+        # Skip tuning in the first round (no history yet)
+        if server_round <= 1:
+            return
+
+        for client_id in self.client_local_accuracy_history.keys():
+            global_history = self.client_global_accuracy_history[client_id]
+            
+            # Get current and previous global accuracies for the client
+            curr_global_acc = global_history[-1]
+            prev_global_acc = global_history[-2] if len(global_history) > 1 else curr_global_acc
+            
+            # Calculate global accuracy improvement
+            global_acc_diff = curr_global_acc - prev_global_acc
+            
+            # Tune both mu and lr_factor
+            if global_acc_diff < -0.05:  # Significant drop in client's global accuracy
+                self.client_mu[client_id] *= 1.055  # Small increase in mu to align with global model
+                self.client_lr_factor[client_id] *= 0.95  # Small decrease in lr to stabilize
+                print(f"Round {server_round}, Client {client_id}: Global accuracy dropped ({global_acc_diff:.4f}). Increasing mu to {self.client_mu[client_id]:.4f}, reducing lr_factor to {self.client_lr_factor[client_id]:.4f}")
+            elif global_acc_diff > 0.1:  # Substantial improvement in client's global accuracy
+                self.client_mu[client_id] *= 0.95  # Small decrease in mu for more local flexibility
+                self.client_lr_factor[client_id] *= 1.055  # Small increase in lr to accelerate
+                print(f"Round {server_round}, Client {client_id}: Significant improvement ({global_acc_diff:.4f}). Decreasing mu to {self.client_mu[client_id]:.4f}, increasing lr_factor to {self.client_lr_factor[client_id]:.4f}")
+            # Otherwise, both remain unchanged
+
+            # Cap values
+            self.client_mu[client_id] = max(0.001, min(self.client_mu[client_id], 0.1))
+            self.client_lr_factor[client_id] = max(0.5, min(self.client_lr_factor[client_id], 1.5))
+
+            # Log current state
+            print(f"Round {server_round}, Client {client_id}: Current global acc: {curr_global_acc:.4f}, mu: {self.client_mu[client_id]:.4f}, lr_factor: {self.client_lr_factor[client_id]:.4f}")
 
 
 # Using the custom strategy which is inherited from fl.server.strategy.FedAvg.In this all clients are required to participate in the training (fit) step and evaluation in each round.Minimum number of clients must be available for a round of training to begin.
@@ -180,6 +271,10 @@ fl.server.start_server(
     strategy=strategy
 )
 
+import json
+os.makedirs("GlobalEvalResults", exist_ok=True)  # Ensure directory exists
+json.dump(strategy.client_local_accuracy_history, open(os.path.join("GlobalEvalResults", "local_accuracy_history.json"), "w"), indent=4)
+json.dump(strategy.client_global_accuracy_history, open(os.path.join("GlobalEvalResults", "global_accuracy_history.json"), "w"), indent=4)
 # Call function to visualize accuracy trends
 visualize_global_accuracy(EVAL_RESULTS_DIR, VISUAL_DIR)
 
