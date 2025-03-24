@@ -4,7 +4,6 @@ from flwr.common import Scalar, NDArrays, Parameters, FitRes, EvaluateRes, ndarr
 from flwr.server.client_proxy import ClientProxy
 from flwr.server.strategy.aggregate import aggregate
 from visualisations import visualize_global_accuracy_clients,visualize_local_accuracy_clients
-import os
 
 '''
 CAUTION:
