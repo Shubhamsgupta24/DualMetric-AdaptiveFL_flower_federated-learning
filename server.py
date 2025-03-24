@@ -13,7 +13,7 @@ CAUTION:
 
 # Global variables
 NUM_CLIENTS = 6
-NUM_ROUNDS = 3
+NUM_ROUNDS = 100
 VISUAL_DIR = "./Visualizations"
 
 class CustomStrategy(fl.server.strategy.FedAvg):
