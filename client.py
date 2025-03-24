@@ -17,10 +17,7 @@ CAUTION:
 
 # Global variables
 NUM_CLIENTS = 6
-TOKENIZER_DIR = "./Tokenizer"
-LABEL_ENCODER_DIR = "./LabelEncoder"
-CLIENT_MODEL_DIR = "./ClientModel"
-GLOBAL_EVAL_RESULTS_DIR = "./GlobalEvalResults"
+MODEL_DIR="./models"
 
 # Setting print options for better readability where precision is the decimal digits to be printed and threshold is the number of array elements which triggers summarization in a numpy array.
 np.set_printoptions(precision=5, threshold=50)
@@ -58,12 +55,12 @@ def load_client_data(client_id):
     y_test = np.array(y_test)  # Convert to NumPy array
     
     # 5) Saving tokenizer and label encoder for future use
-    tokenizer_path = os.path.join(TOKENIZER_DIR, f'tokenizer_client{client_id}.json')
+    tokenizer_path = os.path.join(MODEL_DIR, f"Client{client_id}/tokenizer.json")
     with open(tokenizer_path, 'w') as f:
         json.dump(tokenizer.to_json(), f)
     print(f"Tokenizer saved at: {tokenizer_path}\n")
 
-    label_encoder_path = os.path.join(LABEL_ENCODER_DIR, f'label_encoder_client{client_id}.pkl')
+    label_encoder_path = os.path.join(MODEL_DIR, f"Client{client_id}/label_encoder.pkl")
     with open(label_encoder_path, 'wb') as f:
         pickle.dump(label_encoder, f)
     print(f"Label Encoder saved at: {label_encoder_path}\n")
@@ -124,7 +121,7 @@ class BitextClient(fl.client.NumPyClient):
         self.client_id = client_id
         self.X_train, self.X_test, self.y_train, self.y_test, self.tokenizer, self.label_encoder = load_client_data(client_id)
         self.model = create_model(self.X_train.shape[1], len(np.unique(self.y_train)))
-        self.model_path = os.path.join(CLIENT_MODEL_DIR, f'client{client_id}_model.keras')
+        self.model_path = os.path.join(MODEL_DIR, f'Client{client_id}/model.keras')
         self.local_round = 0 # Counter for local rounds
         
     def get_parameters(self, config):
@@ -240,24 +237,6 @@ class BitextClient(fl.client.NumPyClient):
         # 3) Evaluate the model on the global test data and return the loss and accuracy
         global_loss, global_accuracy = self.model.evaluate(self.X_test, self.y_test, verbose=2)
         print(f"\nClient {self.client_id} - Global Evaluation Loss: {global_loss:.4f}, Accuracy: {global_accuracy:.4f}\n",flush=True)
-
-        # 4) Save global evaluation accuracy to JSON
-        global_eval_file_path = os.path.join(GLOBAL_EVAL_RESULTS_DIR, f"client{self.client_id}_global_eval.json")
-
-        # Load existing data if file exists
-        if os.path.exists(global_eval_file_path):
-            with open(global_eval_file_path, "r") as f:
-                eval_history = json.load(f)
-        else:
-            eval_history = {}
-
-        # Append new accuracy result
-        eval_history[str(self.local_round)] = global_accuracy
-
-        # Save back to file
-        with open(global_eval_file_path, "w") as f:
-            json.dump(eval_history, f, indent=4)
-
 
         print(f"============= Client {self.client_id} Testing Completed =============",flush=True)
         print(f"============= Sending evaluation results to server ==================\n",flush=True)

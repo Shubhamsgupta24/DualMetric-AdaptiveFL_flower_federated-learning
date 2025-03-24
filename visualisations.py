@@ -123,60 +123,52 @@ def visualize_test_dataset(TEST_DIR, VISUAL_DIR):
     except Exception as e:
         print(f"Error saving visualization: {e}")
 
-def visualize_global_accuracy(eval_results_dir, visual_dir):
+def visualize_global_accuracy_clients(global_accuracy_hist,VISUAL_DIR):
     """
-    Plots the global evaluation accuracy for each client across rounds.
-    Reads accuracy results from JSON files inside 'Global evaluation results' directory.
+    Plots global accuracy for each client and saves the figure as a PNG.
+    
+    Parameters:
+        global_accuracy_hist (dict): Dictionary with client IDs as keys and accuracy lists as values.
+        VISUAL_DIR: Directory where the PNG file will be saved.
     """
-    import json
+    plt.figure(figsize=(10, 5))
+    for idx, (client, acc) in enumerate(global_accuracy_hist.items(), 1):
+        plt.plot(range(1, len(acc) + 1), acc, label=f"Client {idx}")
+    
+    plt.xlabel("Rounds")
+    plt.ylabel("Accuracy")
+    plt.ylim(0, 1)
+    plt.title("Global Accuracy", fontsize=14, fontweight="bold")
+    plt.legend()
+    plt.grid(True)
+    
+    os.makedirs(VISUAL_DIR, exist_ok=True)
+    save_path = os.path.join(VISUAL_DIR, "global_accuracy_comparison.png")
+    plt.savefig(save_path)
+    plt.close()
+    print(f"Global accuracy plot saved at: {save_path}")
 
-    # Get all client evaluation files
-    eval_files = [f for f in os.listdir(eval_results_dir) if f.startswith("client") and f.endswith(".json")]
-
-    if not eval_files:
-        print("No evaluation results found! Ensure clients have completed evaluations.")
-        return
-
-    # Read accuracy data from files
-    client_accuracies = {}
-    for file in eval_files:
-        client_id = int(file.split("_")[0].replace("client", ""))  # Extract client ID
-        file_path = os.path.join(eval_results_dir, file)
-
-        with open(file_path, "r") as f:
-            client_accuracies[client_id] = json.load(f)
-
-    # Determine number of clients
-    num_clients = len(client_accuracies)
-    cols = 3  # 4 clients per row
-    rows = (num_clients // cols) + (num_clients % cols > 0)  # Calculate needed rows
-
-    fig, axes = plt.subplots(rows, cols, figsize=(18, 10))
-    axes = axes.flatten()
-
-    for i, (client_id, accuracies) in enumerate(sorted(client_accuracies.items())):
-        rounds = sorted(map(int, accuracies.keys()))  # Sort rounds
-        acc_values = [accuracies[str(r)] for r in rounds]  # Get accuracy values
-
-        ax = axes[i]
-        ax.plot(rounds, acc_values, marker="o", linestyle="-", color="blue", label=f"Client {client_id}")
-
-        ax.set_title(f"Client {client_id} Global Accuracy")
-        ax.set_xlabel("Rounds")
-        ax.set_ylabel("Global Accuracy")
-        ax.set_ylim(0, 1.0)  # Accuracy range
-        ax.set_xticks(range(0, max(rounds) + 1, max(1, len(rounds) // 10)))  # Adjust tick intervals
-
-    # Hide unused subplots
-    for j in range(i + 1, len(axes)):
-        fig.delaxes(axes[j])
-
-    plt.subplots_adjust(top=0.9, hspace=0.5)
-
-    # Save the figure
-    graph_path = os.path.join(visual_dir, "global_accuracy_trend.png")
-    try:
-        plt.savefig(graph_path, dpi=300, bbox_inches="tight")
-        print(f"Visualization saved successfully at: {graph_path}")
-    except Exception as e:
-        print(f"Error saving visualization: {e}")
+def visualize_local_accuracy_clients(local_accuracy_hist, VISUAL_DIR):
+    """
+    Plots local accuracy for each client and saves the figure as a PNG.
+    
+    Parameters:
+        local_accuracy_hist (dict): Dictionary with client IDs as keys and accuracy lists as values.
+        VISUAL_DIR: Directory where the PNG file will be saved.
+    """
+    plt.figure(figsize=(10, 5))
+    for idx, (client, acc) in enumerate(local_accuracy_hist.items(), 1):
+        plt.plot(range(1, len(acc) + 1), acc, label=f"Client {idx}")
+    
+    plt.xlabel("Rounds")
+    plt.ylabel("Accuracy")
+    plt.ylim(0, 1)
+    plt.title("Local Accuracy", fontsize=14, fontweight="bold")
+    plt.legend()
+    plt.grid(True)
+    
+    os.makedirs(VISUAL_DIR, exist_ok=True)
+    save_path = os.path.join(VISUAL_DIR, "local_accuracy_comparison.png")
+    plt.savefig(save_path)
+    plt.close()
+    print(f"Local accuracy plot saved at: {save_path}")

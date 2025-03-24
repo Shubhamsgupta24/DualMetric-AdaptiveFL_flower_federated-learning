@@ -3,7 +3,7 @@ from typing import List, Tuple, Optional, Dict, Union
 from flwr.common import Scalar, NDArrays, Parameters, FitRes, EvaluateRes, ndarrays_to_parameters, parameters_to_ndarrays
 from flwr.server.client_proxy import ClientProxy
 from flwr.server.strategy.aggregate import aggregate
-from visualisations import visualize_global_accuracy
+from visualisations import visualize_global_accuracy_clients,visualize_local_accuracy_clients
 import os
 
 '''
@@ -13,12 +13,8 @@ CAUTION:
 
 # Global variables
 NUM_CLIENTS = 6
-NUM_ROUNDS = 100
-EVAL_RESULTS_DIR = "GlobalEvalResults"
-VISUAL_DIR = "Visualizations"
-
-# Ensure directory exists
-os.makedirs(VISUAL_DIR, exist_ok=True)
+NUM_ROUNDS = 3
+VISUAL_DIR = "./Visualizations"
 
 class CustomStrategy(fl.server.strategy.FedAvg):
 
@@ -242,11 +238,11 @@ class CustomStrategy(fl.server.strategy.FedAvg):
             if global_acc_diff < -0.05:  # Significant drop in client's global accuracy
                 self.client_mu[client_id] *= 1.055  # Small increase in mu to align with global model
                 self.client_lr_factor[client_id] *= 0.95  # Small decrease in lr to stabilize
-                print(f"Round {server_round}, Client {client_id}: Global accuracy dropped ({global_acc_diff:.4f}). Increasing mu to {self.client_mu[client_id]:.4f}, reducing lr_factor to {self.client_lr_factor[client_id]:.4f}")
+                print(f"Round {server_round}, Client {client_id}: Global accuracy dropped ({global_acc_diff:.4f}). Increasing mu to {self.client_mu[client_id]:.4f}, reducing lr_factor to {self.client_lr_factor[client_id]:.4f}",flush=True)
             elif global_acc_diff > 0.1:  # Substantial improvement in client's global accuracy
                 self.client_mu[client_id] *= 0.95  # Small decrease in mu for more local flexibility
                 self.client_lr_factor[client_id] *= 1.055  # Small increase in lr to accelerate
-                print(f"Round {server_round}, Client {client_id}: Significant improvement ({global_acc_diff:.4f}). Decreasing mu to {self.client_mu[client_id]:.4f}, increasing lr_factor to {self.client_lr_factor[client_id]:.4f}")
+                print(f"Round {server_round}, Client {client_id}: Significant improvement ({global_acc_diff:.4f}). Decreasing mu to {self.client_mu[client_id]:.4f}, increasing lr_factor to {self.client_lr_factor[client_id]:.4f}",flush=True)
             # Otherwise, both remain unchanged
 
             # Cap values
@@ -254,7 +250,7 @@ class CustomStrategy(fl.server.strategy.FedAvg):
             self.client_lr_factor[client_id] = max(0.5, min(self.client_lr_factor[client_id], 1.5))
 
             # Log current state
-            print(f"Round {server_round}, Client {client_id}: Current global acc: {curr_global_acc:.4f}, mu: {self.client_mu[client_id]:.4f}, lr_factor: {self.client_lr_factor[client_id]:.4f}")
+            print(f"Round {server_round}, Client {client_id}: Current global acc: {curr_global_acc:.4f}, mu: {self.client_mu[client_id]:.4f}, lr_factor: {self.client_lr_factor[client_id]:.4f}",flush=True)
 
 
 # Using the custom strategy which is inherited from fl.server.strategy.FedAvg.In this all clients are required to participate in the training (fit) step and evaluation in each round.Minimum number of clients must be available for a round of training to begin.
@@ -271,11 +267,8 @@ fl.server.start_server(
     strategy=strategy
 )
 
-import json
-os.makedirs("GlobalEvalResults", exist_ok=True)  # Ensure directory exists
-json.dump(strategy.client_local_accuracy_history, open(os.path.join("GlobalEvalResults", "local_accuracy_history.json"), "w"), indent=4)
-json.dump(strategy.client_global_accuracy_history, open(os.path.join("GlobalEvalResults", "global_accuracy_history.json"), "w"), indent=4)
-# Call function to visualize accuracy trends
-visualize_global_accuracy(EVAL_RESULTS_DIR, VISUAL_DIR)
+# Call function to visualize local and global accuracy trends
+visualize_global_accuracy_clients(strategy.client_global_accuracy_history, VISUAL_DIR)
+visualize_local_accuracy_clients(strategy.client_local_accuracy_history, VISUAL_DIR)
 
 print("\nFederated learning completed.", flush=True)
