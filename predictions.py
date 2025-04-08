@@ -93,7 +93,7 @@ if st.button("Classify"):
                 df = df.sort_values(by="Probability", ascending=False)  # Sort by probability
                 
                 # Plot bar chart
-                fig, ax = plt.subplots(figsize=(6, 3))
+                fig, ax = plt.subplots(figsize=(6, 10))
                 ax.barh(df["Category"], df["Probability"], color="skyblue")
                 ax.set_xlabel("Probability")
                 ax.set_ylabel("Category")

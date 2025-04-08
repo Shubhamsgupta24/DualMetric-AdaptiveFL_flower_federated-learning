@@ -11,7 +11,7 @@ CAUTION:
 '''
 
 # Global variables
-NUM_CLIENTS = 6
+NUM_CLIENTS = 11
 NUM_ROUNDS = 100
 VISUAL_DIR = "./Visualizations"
 
@@ -208,13 +208,13 @@ class CustomStrategy(fl.server.strategy.FedAvg):
                 self.client_global_accuracy_history[client_id].append(global_accuracy)
 
         # Call the tuning function after collecting all metrics
-        self.tune_client_hyperparameters(server_round,global_accuracy_aggregated,local_accuracy_aggregated)
+        # self.tune_client_hyperparameters(server_round)
 
         print(f"\n============= Aggregation Completed for Round {server_round} ==============\n", flush=True)
         
         return local_loss_aggregated, {"local_accuracy": local_accuracy_aggregated,"global_loss": global_loss_aggregated,"global_accuracy": global_accuracy_aggregated}
     
-    def tune_client_hyperparameters(self, server_round: int,global_accuracy_aggregated: float,local_accuracy_aggregated: float):
+    def tune_client_hyperparameters(self, server_round: int):
         """
         Tune both mu and lr_factor for each client based on their global accuracy trend.
         Aim to improve accuracy beyond baseline with conservative adjustments.
@@ -222,26 +222,84 @@ class CustomStrategy(fl.server.strategy.FedAvg):
         # Skip tuning in the first round (no history yet)
         if server_round <= 1:
             return
+        
+        # Compute average local accuracy across all clients (for disparity-based adjustment)
+        current_local_accuracies = {
+            cid: self.client_local_accuracy_history[cid][-1]
+            for cid in self.client_local_accuracy_history.keys()
+        }
+        avg_local_acc = sum(current_local_accuracies.values()) / len(current_local_accuracies)
 
         for client_id in self.client_local_accuracy_history.keys():
-            global_history = self.client_global_accuracy_history[client_id]
-            
-            # Get current and previous global accuracies for the client
-            curr_global_acc = global_history[-1]
-            prev_global_acc = global_history[-2] if len(global_history) > 1 else curr_global_acc
             
             # Calculate global accuracy improvement
+            global_history = self.client_global_accuracy_history[client_id]
+            curr_global_acc = global_history[-1]
+            prev_global_acc = global_history[-2] if len(global_history) > 1 else curr_global_acc
             global_acc_diff = curr_global_acc - prev_global_acc
+
+            # Calculate local accuracy improvement
+            local_history = self.client_local_accuracy_history[client_id]
+            curr_local_acc = local_history[-1]
+            prev_local_acc = local_history[-2] if len(local_history) > 1 else curr_local_acc
+            local_acc_diff = curr_local_acc - prev_local_acc
             
-            # Tune both mu and lr_factor
-            if global_acc_diff < -0.05:  # Significant drop in client's global accuracy
-                self.client_mu[client_id] *= 1.055  # Small increase in mu to align with global model
-                self.client_lr_factor[client_id] *= 0.95  # Small decrease in lr to stabilize
-                print(f"Round {server_round}, Client {client_id}: Global accuracy dropped ({global_acc_diff:.4f}). Increasing mu to {self.client_mu[client_id]:.4f}, reducing lr_factor to {self.client_lr_factor[client_id]:.4f}",flush=True)
-            elif global_acc_diff > 0.1:  # Substantial improvement in client's global accuracy
-                self.client_mu[client_id] *= 0.95  # Small decrease in mu for more local flexibility
-                self.client_lr_factor[client_id] *= 1.055  # Small increase in lr to accelerate
-                print(f"Round {server_round}, Client {client_id}: Significant improvement ({global_acc_diff:.4f}). Decreasing mu to {self.client_mu[client_id]:.4f}, increasing lr_factor to {self.client_lr_factor[client_id]:.4f}",flush=True)
+            # --- Tuning Conditions for mu ---
+            mu_update_factor = 1.0
+
+            # === Intra-client behavior: trends within the client ===
+            # 1) Local ↓, Global ↓ or ↔
+            if local_acc_diff < -0.03 and global_acc_diff <= 0:
+                mu_update_factor *= 1.005  # Slight more regularization
+                print(f"Round {server_round}, Client {client_id}: ↓ Local & Global : ↑ mu to {self.client_mu[client_id]:.4f}", flush=True)
+            # 2) Local ↑, Global ↑ or ↔
+            elif local_acc_diff > 0.05 and global_acc_diff >= 0:
+                mu_update_factor *= 0.995  # Slightly More local freedom
+                print(f"Round {server_round}, Client {client_id}: ↑ Local & Global : ↓ mu to {self.client_mu[client_id]:.4f}", flush=True)
+            # 3) Local ↑, Global ↓ 
+            elif local_acc_diff > 0.05 and global_acc_diff < -0.03:
+                mu_update_factor *= 1.05  # Strong regularization increase
+                print(f"Round {server_round}, Client {client_id}: ↑ Local, ↓ Global : ↓ mu (slightly) to {self.client_mu[client_id]:.4f}", flush=True)
+            # 4) Local ↓, Global ↑
+            elif local_acc_diff < -0.03 and global_acc_diff > 0.05:
+                mu_update_factor *= 0.95  # Strong more local freedom
+                print(f"Round {server_round}, Client {client_id}: ↓ Local, ↑ Global : ↑ mu (slightly) to {self.client_mu[client_id]:.4f}", flush=True)  
+
+            # === Inter-client behavior: compare client to average ===
+            disparity = curr_local_acc - avg_local_acc
+
+            # 5) Local accuracy significantly below average
+            if disparity < -0.05:
+                mu_update_factor *= 0.85
+                print(f"Round {server_round}, Client {client_id}: Local acc well below avg ({disparity:.2f}) → ↑ mu strongly (inter)", flush=True)
+            
+            # 7) Local accuracy slightly below average
+            elif -0.05 < disparity < -0.02:
+                mu_update_factor *= 0.95
+                print(f"Round {server_round}, Client {client_id}: Local acc slightly below avg ({disparity:.2f}) → ↑ mu slightly (inter)", flush=True)
+
+            # 6) Local accuracy significantly above average
+            elif disparity > 0.05:
+                mu_update_factor *= 1.15
+                print(f"Round {server_round}, Client {client_id}: Local acc well above avg ({disparity:.2f}) → ↓ mu strongly (inter)", flush=True)
+        
+
+            # 8) Local accuracy slightly above average
+            elif 0.02 < disparity < 0.05:
+                mu_update_factor *= 1.05
+                print(f"Round {server_round}, Client {client_id}: Local acc slightly above avg ({disparity:.2f}) → ↓ mu slightly (inter)", flush=True)
+
+            # Update mu for the client
+            self.client_mu[client_id] *= mu_update_factor
+
+
+            # --- Tune lr_factor ---
+            # if global_acc_diff < -0.05:
+            #     self.client_lr_factor[client_id] *= 0.95
+            #     print(f"Round {server_round}, Client {client_id}: ↓ Accuracy ({global_acc_diff:.4f}) → ↓ lr_factor to {self.client_lr_factor[client_id]:.4f}", flush=True)
+            # elif global_acc_diff > 0.1:
+            #     self.client_lr_factor[client_id] *= 1.055
+            #     print(f"Round {server_round}, Client {client_id}: ↑ Accuracy ({global_acc_diff:.4f}) → ↑ lr_factor to {self.client_lr_factor[client_id]:.4f}", flush=True)
             # Otherwise, both remain unchanged
 
             # Cap values

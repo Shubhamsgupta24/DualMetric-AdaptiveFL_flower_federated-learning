@@ -1,6 +1,6 @@
 #!/bin/bash
 
-NUM_CLIENTS=6
+NUM_CLIENTS=11
 OUTPUT_DIR="./Outputs"
 TRAIN_DIR="./Dataset/Train"
 TEST_DIR="./Dataset/Test"
@@ -28,9 +28,10 @@ mkdir -p "$MODEL_DIR"
 
 for ((i=0; i<NUM_CLIENTS; i++))
 do
-    rm -rf "$MODEL_DIR/Client$i"
     mkdir -p "$MODEL_DIR/Client$i"
 done
+
+mkdir -p "$MODEL_DIR/Global"
 
 # 4) Running the data preparation script to prepare the data for the clients and visualize it
 python data_prep.py > "$OUTPUT_DIR/DataPrep.log" 2>&1

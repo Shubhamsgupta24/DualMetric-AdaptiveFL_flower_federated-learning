@@ -3,7 +3,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-def visualize_client_datasets(TRAIN_DIR, VISUAL_DIR):
+def visualize_client_datasets(TRAIN_DIR, VISUAL_DIR, target_label):
     """
     Visualizes the category distribution for all client datasets stored in the Train directory.
     Ensures all categories (from all clients) appear in every client plot.
@@ -26,7 +26,7 @@ def visualize_client_datasets(TRAIN_DIR, VISUAL_DIR):
 
     for client_file in client_files:
         client_data = pd.read_csv(os.path.join(TRAIN_DIR, client_file))
-        unique_categories = set(client_data['category'].unique())
+        unique_categories = set(client_data[target_label].unique())
         all_categories.update(unique_categories)  # Collect all unique categories
         client_datasets[client_file] = client_data  # Store data for reuse
 
@@ -35,17 +35,17 @@ def visualize_client_datasets(TRAIN_DIR, VISUAL_DIR):
 
     # Define grid size for subplots
     num_clients = len(client_files)
-    cols = 3  # 4 clients per row
+    cols = 2  # 4 clients per row
     rows = (num_clients // cols) + (num_clients % cols > 0)  # Calculate needed rows
 
-    fig, axes = plt.subplots(rows, cols, figsize=(18, 10))
+    fig, axes = plt.subplots(rows, cols, figsize=(28, 10))
     axes = axes.flatten()  # Flatten for easy iteration
 
     for i, client_file in enumerate(client_files):
         client_data = client_datasets[client_file]
 
         # Count category distribution
-        category_counts = client_data['category'].value_counts()
+        category_counts = client_data[target_label].value_counts()
 
         # Ensure all categories exist (even if 0)
         category_counts = category_counts.reindex(all_categories, fill_value=0)
@@ -65,8 +65,8 @@ def visualize_client_datasets(TRAIN_DIR, VISUAL_DIR):
                         (p.get_x() + p.get_width() / 2, p.get_height() * 1.05),
                         ha='center', va='bottom', fontsize=10, fontweight='bold', color='black')
 
-        ax.set_title(f"Client {i} Category Distribution")
-        ax.set_xlabel("Category")
+        ax.set_title(f"Client {i} {target_label} Distribution")
+        ax.set_xlabel(target_label)
         ax.set_ylabel("Count")
         
         ax.set_xticks(range(len(all_categories)))  
@@ -79,14 +79,14 @@ def visualize_client_datasets(TRAIN_DIR, VISUAL_DIR):
     plt.subplots_adjust(top=0.9, hspace=0.5)
 
     # Save the figure
-    graph_path = os.path.join(VISUAL_DIR, "client_category_distribution.png")
+    graph_path = os.path.join(VISUAL_DIR, f"client_{target_label}_distribution.png")
     try:
         plt.savefig(graph_path, dpi=300, bbox_inches="tight")  # Save without clipping
         print(f"Visualization saved successfully at: {graph_path}")
     except Exception as e:
         print(f"Error saving visualization: {e}")
 
-def visualize_test_dataset(TEST_DIR, VISUAL_DIR):
+def visualize_test_dataset(TEST_DIR, VISUAL_DIR, target_label):
     """
     Visualizes the category distribution for the global test dataset.
     Saves the visualization as a PNG file.
@@ -96,7 +96,7 @@ def visualize_test_dataset(TEST_DIR, VISUAL_DIR):
     test_data = pd.read_csv(os.path.join(TEST_DIR, 'global_test_set.csv'))
 
     # Count category distribution
-    category_counts = test_data['category'].value_counts()
+    category_counts = test_data[target_label].value_counts()
 
     # Create a figure for visualization
     plt.figure(figsize=(20, 10))
@@ -111,12 +111,12 @@ def visualize_test_dataset(TEST_DIR, VISUAL_DIR):
                     ha='center', va='bottom', fontsize=10, fontweight='bold', color='black')
 
     plt.title("Global Test Dataset Category Distribution")
-    plt.xlabel("Category")
+    plt.xlabel(target_label)
     plt.ylabel("Count")
     plt.xticks(rotation=45)
 
     # Save the figure
-    graph_path = os.path.join(VISUAL_DIR, "test_category_distribution.png")
+    graph_path = os.path.join(VISUAL_DIR, f"test_{target_label}_distribution.png")
     try:
         plt.savefig(graph_path, dpi=300)
         print(f"Visualization saved successfully at: {graph_path}")
