@@ -2,6 +2,7 @@ import os
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
+import numpy as np
 
 def visualize_client_datasets(TRAIN_DIR, VISUAL_DIR, target_label):
     """
@@ -172,3 +173,62 @@ def visualize_local_accuracy_clients(local_accuracy_hist, VISUAL_DIR):
     plt.savefig(save_path)
     plt.close()
     print(f"Local accuracy plot saved at: {save_path}")
+
+def plot_accuracy_fairness_tradeoff(client_local_accuracy_history, client_global_accuracy_history, VISUAL_DIR):
+    """
+    Plots Global Accuracy vs Client Accuracy Variance per round to show accuracy–fairness tradeoff.
+    Highlights the best fit point (closest to the trend line).
+    Saves plot as PNG to VISUAL_DIR.
+    """
+    num_rounds = len(next(iter(client_local_accuracy_history.values())))
+
+    variance_per_round = []
+    global_accuracy_per_round = []
+
+    for round_idx in range(num_rounds):
+        local_accuracies = [accs[round_idx] for accs in client_local_accuracy_history.values()]
+        global_accuracies = [accs[round_idx] for accs in client_global_accuracy_history.values()]
+
+        round_variance = np.var(local_accuracies)
+        round_global_accuracy = np.mean(global_accuracies)
+
+        variance_per_round.append(round_variance)
+        global_accuracy_per_round.append(round_global_accuracy)
+
+    # Fit trend line
+    z = np.polyfit(global_accuracy_per_round, variance_per_round, 1)
+    p = np.poly1d(z)
+    trend_variances = p(global_accuracy_per_round)
+
+    # Find the best fit point (smallest distance to trend line)
+    residuals = np.abs(np.array(variance_per_round) - trend_variances)
+    best_fit_idx = np.argmin(residuals)
+
+    # Plot
+    plt.figure(figsize=(12, 7))
+    plt.plot(global_accuracy_per_round, variance_per_round, marker='o', color='teal', label='Client Accuracy Variance')
+
+    # Trend line
+    plt.plot(global_accuracy_per_round, trend_variances, linestyle='--', color='gray', label='Trend Line')
+
+    # Highlight best fit point
+    plt.scatter(global_accuracy_per_round[best_fit_idx], variance_per_round[best_fit_idx], color='red', s=100, zorder=5)
+    plt.text(global_accuracy_per_round[best_fit_idx], variance_per_round[best_fit_idx], 
+             f' Round {best_fit_idx+1}', fontsize=9, color='darkred')
+
+    # Background color zones
+    plt.axhspan(0.00, 0.02, facecolor='green', alpha=0.2, label='Fair (σ² < 0.02)')
+    plt.axhspan(0.02, 0.05, facecolor='orange', alpha=0.2, label='Moderate (0.02 ≤ σ² < 0.05)')
+    plt.axhspan(0.05, 0.1, facecolor='red', alpha=0.2, label='Unfair (σ² ≥ 0.05)')
+
+    plt.xlabel('Global Accuracy')
+    plt.ylabel('Client Accuracy Variance (σ²)')
+    plt.title('Accuracy–Fairness Tradeoff Across Rounds')
+    plt.legend()
+    plt.grid(True)
+    plt.tight_layout()
+
+    os.makedirs(VISUAL_DIR, exist_ok=True)
+    save_path = os.path.join(VISUAL_DIR, "accuracy_fairness_tradeoff_best_fit.png")
+    plt.savefig(save_path)
+    plt.close()

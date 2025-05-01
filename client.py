@@ -12,11 +12,9 @@ from tensorflow.keras.preprocessing.sequence import pad_sequences # type: ignore
 '''
 CAUTION:
 1) Ensure that the dataset is present in the Dataset folder.
-2) NUM_CLIENTS will be according to the number of datasets present in the Train folder which are created using different cases in data_prep_and_viz.py.
 '''
 
 # Global variables
-NUM_CLIENTS = 11
 MODEL_DIR="./models"
 GLOBAL_TOKENIZER_PATH = "./models/Global/tokenizer.json"
 GLOBAL_LABEL_ENCODER_PATH = "./models/Global/label_encoder.pkl"
@@ -33,8 +31,6 @@ def load_client_data(client_id, text_column, label_column):
     # 2) Load global tokenizer
     with open(GLOBAL_TOKENIZER_PATH, "r") as f:
         tokenizer = tokenizer_from_json(json.load(f))
-    # tokenizer = Tokenizer(num_words=800)
-    # tokenizer.fit_on_texts(X_train)
 
     X_train = train_data[text_column].values
     X_test = test_data[text_column].values
@@ -45,7 +41,6 @@ def load_client_data(client_id, text_column, label_column):
     # 3) Loading global label encoder
     with open(GLOBAL_LABEL_ENCODER_PATH, 'rb') as f:
         label_encoder = pickle.load(f)
-    # label_encoder = LabelEncoder()
 
     y_train = label_encoder.transform(train_data[label_column].values)
     
@@ -107,7 +102,6 @@ def create_model(input_shape, num_classes, tokenizer):
         tf.keras.layers.Embedding(vocab_size, 16),
         tf.keras.layers.GlobalAveragePooling1D(),
         tf.keras.layers.Dense(16, activation='relu',kernel_regularizer=tf.keras.regularizers.l2(0.0001)),
-        # tf.keras.layers.BatchNormalization(trainable=True),
         tf.keras.layers.Dense(num_classes, activation='softmax',kernel_regularizer=tf.keras.regularizers.l2(0.0001))
     ])
 
@@ -188,7 +182,7 @@ class BitextClient(fl.client.NumPyClient):
         # 5) Defining a custom loss function to include the proximal term used in FedProx strategy
         def fedprox_loss(y_true, y_pred):
             base_loss = tf.keras.losses.sparse_categorical_crossentropy(y_true, y_pred)
-            
+        
             # Compute proximal regularization term
             prox_term = 0
             for w, w_g in zip(self.model.trainable_weights, global_trainable_weights):
@@ -198,8 +192,7 @@ class BitextClient(fl.client.NumPyClient):
 
             # Final loss = base loss + FedProx regularization term
             final_loss = base_loss + (mu / 2) * prox_term
-            # return final_loss
-            return base_loss
+            return final_loss
 
         # 6) Compile the model again with FedProx loss which includes the proximal term and dynamic learning rate.
         optimizer = tf.keras.optimizers.Adam(learning_rate=base_lr * lr_factor)  # Apply lr_factor to base_lr
@@ -210,14 +203,8 @@ class BitextClient(fl.client.NumPyClient):
 
         # 8) Train the model for 5 epochs(rounds) with a batch size of 64 and a validation split of 30%.The training data is used to adjust the weights of the model and the validation data is used to evaluate the model after each epoch to see how well it is generalizing to unseen data.Batch size controls how many samples the model processes before updating weights. A smaller batch size means that the model is updated more often and the learning has more variance. A larger batch size means that the model is updated less often and the learning has less variance.Verbose is used for displaying the training process.
         history = self.model.fit(self.X_train, self.y_train, epochs=5, validation_split=0.4, verbose=2,callbacks=[early_stopping])
-
-        try:
-            self.model.save(self.model_path)
-            print(f"\nModel for client {self.client_id} saved successfully at {self.model_path}\n", flush=True)
-        except Exception as e:
-            print(f"\nError saving model for client {self.client_id}: {str(e)}", flush=True)
         
-        # 8) Accessing the loss and accuracy of the model after training
+        # 9) Accessing the loss and accuracy of the model after training
         loss = history.history['loss'][-1]
         accuracy = history.history['accuracy'][-1]
 
@@ -235,13 +222,20 @@ class BitextClient(fl.client.NumPyClient):
         # 1) Set the model’s weights to the values passed as parameters.
         self.model.set_weights(parameters)
 
+        # 2) Save the model to the specified path
+        try:
+            self.model.save(self.model_path)
+            print(f"\nModel for client {self.client_id} saved successfully at {self.model_path}\n", flush=True)
+        except Exception as e:
+            print(f"\nError saving model for client {self.client_id}: {str(e)}", flush=True)
+
         print(f"\n################## STEP 2 for Round {self.local_round}: Local and Global Model Testing on Clients Side and updating the Client Model for client {self.client_id} ######################\n", flush=True)
 
-        # 2) Evaluate the model on the clients local training data and return the loss and accuracy
+        # 3) Evaluate the model on the clients local training data and return the loss and accuracy
         local_loss, local_accuracy = self.model.evaluate(self.X_train, self.y_train, verbose=2)
         print(f"\nClient {self.client_id} - Local Evaluation Loss: {local_loss:.4f}, Accuracy: {local_accuracy:.4f}\n",flush=True)
 
-        # 3) Evaluate the model on the global test data and return the loss and accuracy
+        # 4) Evaluate the model on the global test data and return the loss and accuracy
         global_loss, global_accuracy = self.model.evaluate(self.X_test, self.y_test, verbose=2)
         print(f"\nClient {self.client_id} - Global Evaluation Loss: {global_loss:.4f}, Accuracy: {global_accuracy:.4f}\n",flush=True)
 
@@ -251,7 +245,7 @@ class BitextClient(fl.client.NumPyClient):
         #The Evaluate Res object is returned which contains the loss, number of testing examples and the metric dictionary containing additional information.
         return local_loss, len(self.X_train), {"local_accuracy": local_accuracy,"global_loss": global_loss,"global_accuracy": global_accuracy,"X_test_len": len(self.X_test)}
 
-# Start client (run this with client_id=0 to NUM_CLIENTS-1 in separate processes)
+
 if __name__ == "__main__":
     client_id = int(sys.argv[1])
     print(f"\n*******************************Client {client_id} is running*****************************\n")

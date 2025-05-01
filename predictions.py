@@ -11,7 +11,7 @@ from tensorflow.keras.preprocessing.text import tokenizer_from_json #type: ignor
 from tensorflow.keras.preprocessing.sequence import pad_sequences #type: ignore
 
 # Constants
-NUM_CLIENTS = 6
+NUM_CLIENTS = 11
 MODELS_DIR = "models"
 
 # Function to preprocess user input (remove punctuation)

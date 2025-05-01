@@ -3,16 +3,19 @@ from typing import List, Tuple, Optional, Dict, Union
 from flwr.common import Scalar, NDArrays, Parameters, FitRes, EvaluateRes, ndarrays_to_parameters, parameters_to_ndarrays
 from flwr.server.client_proxy import ClientProxy
 from flwr.server.strategy.aggregate import aggregate
-from visualisations import visualize_global_accuracy_clients,visualize_local_accuracy_clients
+from visualisations import visualize_global_accuracy_clients,visualize_local_accuracy_clients,plot_accuracy_fairness_tradeoff
+import numpy as np
+import json
+import os
 
 '''
 CAUTION:
-1) NUM_CLIENTS will be according to the number of datasets present in the Train folder which are created using different cases in data_prep_and_viz.py.
+1) NUM_CLIENTS will be according to the number of datasets present in the Train folder which are created using different cases in data_prep.py
 '''
 
 # Global variables
 NUM_CLIENTS = 11
-NUM_ROUNDS = 100
+NUM_ROUNDS = 50
 VISUAL_DIR = "./Visualizations"
 
 class CustomStrategy(fl.server.strategy.FedAvg):
@@ -28,6 +31,7 @@ class CustomStrategy(fl.server.strategy.FedAvg):
         # Add attributes for hyperparameter tuning
         self.client_local_accuracy_history = {}  # {client_id: [local_accuracy_history] containing local accuracy of all rounds}
         self.client_global_accuracy_history = {}  # {client_id: [global_accuracy_history] containing global accuracy of all rounds}
+        self.client_local_accuracy_variance = {} # {round_number : [local_accuracy_variance] containing local accuracy variance of that particular round}
         self.client_mu = {}  # {client_id: mu_value}
         self.client_lr_factor = {}  # {client_id: lr_factor_value}
     
@@ -148,10 +152,13 @@ class CustomStrategy(fl.server.strategy.FedAvg):
         total_local_accuracy=0
         total_train_examples = 0
 
+        local_accuracies = []
+
         for client_idx, (_, evaluate_res) in enumerate(results):
             num_train_examples = evaluate_res.num_examples
             local_loss = evaluate_res.loss
             local_accuracy = evaluate_res.metrics["local_accuracy"]
+            local_accuracies.append(local_accuracy)
 
             # Print individual client evaluation results
             print(f"Client {client_idx}: Number of trianing examples: {num_train_examples}, Loss: {local_loss:.4f}, Accuracy: {local_accuracy:.4f}", flush=True)
@@ -163,7 +170,11 @@ class CustomStrategy(fl.server.strategy.FedAvg):
 
         local_loss_aggregated = total_local_loss / total_train_examples
         local_accuracy_aggregated = total_local_accuracy / total_train_examples
-        print(f"\nRound {server_round} Local Training Set Metrics - Aggregated Loss: {local_loss_aggregated:.4f}, Aggregated Accuracy: {local_accuracy_aggregated:.4f}\n", flush=True)
+
+        variance = np.var(local_accuracies)
+        self.client_local_accuracy_variance[server_round] = variance
+
+        print(f"\nRound {server_round} Local Training Set Metrics - Aggregated Loss: {local_loss_aggregated:.4f}, Aggregated Accuracy: {local_accuracy_aggregated:.4f}, Variance: {variance}\n", flush=True)
 
         # ========= PART 2 - Aggregating Global Test Set Loss and Metrics =========
         print("\n-> Individual Client Testing Set Metrics on Global Test Set:\n", flush=True)
@@ -208,7 +219,7 @@ class CustomStrategy(fl.server.strategy.FedAvg):
                 self.client_global_accuracy_history[client_id].append(global_accuracy)
 
         # Call the tuning function after collecting all metrics
-        # self.tune_client_hyperparameters(server_round)
+        self.tune_client_hyperparameters(server_round)
 
         print(f"\n============= Aggregation Completed for Round {server_round} ==============\n", flush=True)
         
@@ -327,5 +338,26 @@ fl.server.start_server(
 # Call function to visualize local and global accuracy trends
 visualize_global_accuracy_clients(strategy.client_global_accuracy_history, VISUAL_DIR)
 visualize_local_accuracy_clients(strategy.client_local_accuracy_history, VISUAL_DIR)
+plot_accuracy_fairness_tradeoff(strategy.client_local_accuracy_history, strategy.client_global_accuracy_history, VISUAL_DIR)
+
+# Directory to save the individual history files
+HISTORY_DIR = os.path.join(VISUAL_DIR, "histories")
+os.makedirs(HISTORY_DIR, exist_ok=True)
+
+# Save client_local_accuracy_history
+local_accuracy_history_path = os.path.join(HISTORY_DIR, "client_local_accuracy_history.json")
+with open(local_accuracy_history_path, 'w') as f:
+    json.dump(strategy.client_local_accuracy_history, f, indent=4)
+
+# Save client_global_accuracy_history
+global_accuracy_history_path = os.path.join(HISTORY_DIR, "client_global_accuracy_history.json")
+with open(global_accuracy_history_path, 'w') as f:
+    json.dump(strategy.client_global_accuracy_history, f, indent=4)
+
+# Save client_local_accuracy_variance
+local_accuracy_variance_path = os.path.join(HISTORY_DIR, "client_local_accuracy_variance.json")
+with open(local_accuracy_variance_path, 'w') as f:
+    json.dump(strategy.client_local_accuracy_variance, f, indent=4)
+
 
 print("\nFederated learning completed.", flush=True)

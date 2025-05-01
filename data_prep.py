@@ -14,7 +14,6 @@ from symspellpy import SymSpell, Verbosity
 TRAIN_DIR = './Dataset/Train'
 TEST_DIR = './Dataset/Test'
 VISUAL_DIR = './Visualizations'
-# DATA_PATH='./Dataset/Bitext_Sample_Customer_Support_Training_Dataset_27K_responses-v11.csv'
 DATA_PATH="./Dataset/Retail_bitext_dataset.csv"
 TOKENIZER_PATH = "./models/Global/tokenizer.json"
 LABEL_ENCODER_PATH = "./models/Global/label_encoder.pkl"
@@ -427,12 +426,14 @@ if __name__ == "__main__":
     save_test_data(test_data)
     prepare_and_save_tokenizer_label_encoder(data, 'instruction', 'intent')
 
+    # These are the different ways to prepare train data for clients - Uncomment the one you want to use
+
     # prepare_train_data_iid(train_data,6) # NUM_CLIENTS = 6
     # prepare_train_data_noniid_0(train_data,11) # NUM_CLIENTS = 11
     # prepare_train_data_noniid_1(train_data) # NUM_CLIENTS = 6 by default
     # prepare_train_data_noniid_2(train_data) # NUM_CLIENTS = 6 (n rows each)
     # prepare_train_data_noniid_3(train_data) # NUM_CLIENTS = 11 (n rows each)
-    prepare_train_data_noniid_4(train_data)
+    prepare_train_data_noniid_4(train_data) # NUM_CLIENTS = 11 (n rows each)
 
     visualize_client_datasets(TRAIN_DIR, VISUAL_DIR, "intent")
     visualize_test_dataset(TEST_DIR, VISUAL_DIR, "intent")
