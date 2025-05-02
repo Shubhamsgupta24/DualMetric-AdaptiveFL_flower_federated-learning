@@ -87,43 +87,6 @@ def visualize_client_datasets(TRAIN_DIR, VISUAL_DIR, target_label):
     except Exception as e:
         print(f"Error saving visualization: {e}")
 
-def visualize_test_dataset(TEST_DIR, VISUAL_DIR, target_label):
-    """
-    Visualizes the category distribution for the global test dataset.
-    Saves the visualization as a PNG file.
-    """
-
-    # Load test dataset
-    test_data = pd.read_csv(os.path.join(TEST_DIR, 'global_test_set.csv'))
-
-    # Count category distribution
-    category_counts = test_data[target_label].value_counts()
-
-    # Create a figure for visualization
-    plt.figure(figsize=(20, 10))
-
-    # Plot the test dataset distribution
-    ax = sns.barplot(x=category_counts.index, y=category_counts.values, hue=category_counts.index, legend=False, palette="viridis")
-
-    # Display count on top of each bar
-    for p in ax.patches:
-        ax.annotate(f"{int(p.get_height())}", 
-                    (p.get_x() + p.get_width() / 2, p.get_height()),  
-                    ha='center', va='bottom', fontsize=10, fontweight='bold', color='black')
-
-    plt.title("Global Test Dataset Category Distribution")
-    plt.xlabel(target_label)
-    plt.ylabel("Count")
-    plt.xticks(rotation=45)
-
-    # Save the figure
-    graph_path = os.path.join(VISUAL_DIR, f"test_{target_label}_distribution.png")
-    try:
-        plt.savefig(graph_path, dpi=300)
-        print(f"Visualization saved successfully at: {graph_path}")
-    except Exception as e:
-        print(f"Error saving visualization: {e}")
-
 def visualize_global_accuracy_clients(global_accuracy_hist,VISUAL_DIR):
     """
     Plots global accuracy for each client and saves the figure as a PNG.
@@ -232,3 +195,52 @@ def plot_accuracy_fairness_tradeoff(client_local_accuracy_history, client_global
     save_path = os.path.join(VISUAL_DIR, "accuracy_fairness_tradeoff_best_fit.png")
     plt.savefig(save_path)
     plt.close()
+
+def visualize_test_dataset(TEST_DIR, VISUAL_DIR, target_label):
+    """
+    Visualizes the category distribution for the global test dataset.
+    Saves the visualization as a PNG file.
+    """
+
+    # Load test dataset
+    test_data = pd.read_csv(os.path.join(TEST_DIR, 'global_test_set.csv'))
+
+    # Count category distribution
+    category_counts = test_data[target_label].value_counts()
+
+    # Assign numeric labels
+    numeric_labels = list(range(len(category_counts)))
+    label_mapping = dict(zip(numeric_labels, category_counts.index))
+
+    # Create a figure for visualization
+    plt.figure(figsize=(20, 10))
+
+    # Plot using numeric x-axis values
+    ax = sns.barplot(x=numeric_labels, y=category_counts.values, palette="viridis")
+
+    # Display count on top of each bar
+    for i, p in enumerate(ax.patches):
+        ax.annotate(f"{int(p.get_height())}", 
+                    (p.get_x() + p.get_width() / 2, p.get_height()),  
+                    ha='center', va='bottom', fontsize=10, fontweight='bold', color='black')
+
+    # Set x-ticks as numeric values with original category names as a legend
+    plt.xticks(ticks=numeric_labels, labels=numeric_labels, rotation=45)
+    plt.yticks(range(0, 401, 50))  # Set y-axis to span till 500
+
+    # Create a legend mapping numbers to category names
+    handles = [plt.Line2D([0], [0], marker='o', color='w', label=f"{i}: {label_mapping[i]}", 
+                          markerfacecolor='gray', markersize=10) for i in numeric_labels]
+    plt.legend(title="Category Mapping", handles=handles, bbox_to_anchor=(1.05, 1), loc='upper left')
+
+    plt.title("Global Test Dataset Category Distribution")
+    plt.xlabel(f"{target_label} (Numeric Labels)")
+    plt.ylabel("Count")
+
+    # Save the figure
+    graph_path = os.path.join(VISUAL_DIR, f"test_{target_label}_distribution.png")
+    try:
+        plt.savefig(graph_path, dpi=300, bbox_inches='tight')
+        print(f"Visualization saved successfully at: {graph_path}")
+    except Exception as e:
+        print(f"Error saving visualization: {e}")
