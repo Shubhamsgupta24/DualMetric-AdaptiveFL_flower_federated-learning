@@ -1,5 +1,5 @@
 # Project Name
-DualMetric-FL: Our Fairness-Aware Federated Learning Framework for NLP
+DualMetric-Adaptive FL: Our Fairness-Aware Federated Learning Framework for NLP
 
 ## Setup Instructions
 

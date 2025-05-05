@@ -219,7 +219,7 @@ class CustomStrategy(fl.server.strategy.FedAvg):
                 self.client_global_accuracy_history[client_id].append(global_accuracy)
 
         # Call the tuning function after collecting all metrics
-        # self.tune_client_hyperparameters(server_round)
+        self.tune_client_hyperparameters(server_round)
 
         print(f"\n============= Aggregation Completed for Round {server_round} ==============\n", flush=True)
         
