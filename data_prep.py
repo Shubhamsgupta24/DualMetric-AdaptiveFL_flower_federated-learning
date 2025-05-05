@@ -18,7 +18,7 @@ DATA_PATH="./Dataset/Retail_bitext_dataset.csv"
 TOKENIZER_PATH = "./models/Global/tokenizer.json"
 LABEL_ENCODER_PATH = "./models/Global/label_encoder.pkl"
 TEST_SIZE = 0.2 # Percentage of data for testing from the main dataset
-PREPROCESSING_FLAG = True # Set to True if preprocessing is done else otherwise
+PREPROCESSING_FLAG = False # Set to True if preprocessing is done else otherwise
 
 def generate_dictionary(sym_spell):
     """Generate and print dictionary dynamically from wordfreq."""
