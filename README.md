@@ -79,3 +79,6 @@ All the log files generated are stored in OUTPUTS Directory.
 Proposed DualMetric-Adaptive FL improves clients fariness in the federated learning setup.
 
 To check for the improvement run these code and then comment out the self.tune_client_hyperparameters(server_round) in aggregate_evaluate function in server.py which will disbale the dynamic changes made to regularization paramter so the default regularization paramter value(mu) will be taken by client and not the one guided by the server.
+
+## Communication
+For any queries mail at shubhamsgupta24@gmail.com
